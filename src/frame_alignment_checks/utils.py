@@ -1,0 +1,77 @@
+from functools import lru_cache
+import numpy as np
+from permacache import stable_hash
+
+
+def all_seqs(n, *, amount=4):
+    """
+    Generates all sequences of length n, with the given amount of nucleotides.
+    """
+    if n == 0:
+        yield []
+        return
+    for s in all_seqs(n - 1, amount=amount):
+        for i in np.eye(amount):
+            yield [i] + s
+
+
+@lru_cache(None)
+def all_3mers():
+    return np.array(list(all_seqs(3)))
+
+
+def stable_hash_cached(model):
+    """
+    Cache the stable hash of a model.
+
+    Note: **only use this function if the model is not going to change**.
+    """
+    if model is None:
+        return stable_hash(None)
+    assert not model.training
+    if not hasattr(model, "_stable_hash_value"):
+        model._stable_hash_value = stable_hash(model)
+    return model._stable_hash_value
+
+
+def collect_windows(x, locs, cl):
+    """
+    Collect windows around the given locations in the sequence. Extra padding of zeros will be added
+    if the windows go out of bounds.
+
+    :param x: The sequence to collect windows from.
+    :param locs: The locations to collect windows around.
+    :param cl: The context length of the windows.
+
+    :returns:
+        x_windows: The windows around the locations. Will be of shape (len(locs), cl + 1, 4).
+    """
+    assert cl % 2 == 0, "cl must be even"
+    x_window = np.zeros((len(locs), cl + 1, 4), dtype=np.float32)
+    for i, loc in enumerate(locs):
+        start_in_x, end_in_x = loc - cl // 2, loc + cl // 2 + 1
+        start_in_x_window, end_in_x_window = 0, cl + 1
+        if start_in_x < 0:
+            start_in_x_window += -start_in_x
+            start_in_x = 0
+        if end_in_x >= len(x):
+            end_in_x_window -= end_in_x - len(x)
+            end_in_x = len(x)
+        x_window[i, start_in_x_window:end_in_x_window] = x[start_in_x:end_in_x]
+    return x_window
+
+
+def extract_center(model, xs):
+    """
+    Run the model on the given sequences and extract the center of the output.
+
+    :param model: The model to run.
+    :param xs: The sequences to run the model on. Should be of shape (N, cl + 1, 4).
+
+    :returns:
+        yps: The center of the output of the model. Will be of shape (N, 3).
+    """
+    yps = model(xs)
+    yps = yps[:, yps.shape[1] // 2]
+    yps = yps.softmax(-1)
+    return yps

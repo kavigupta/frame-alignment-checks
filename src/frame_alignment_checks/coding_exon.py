@@ -1,0 +1,40 @@
+from dataclasses import dataclass
+
+from .data.load import load_validation_gene
+
+
+@dataclass
+class CodingExon:
+    """
+    Represents a coding exon in a gene. Can be constitutive or alternative.
+    """
+
+    gene_idx: int  # Index of the gene in the validation set
+    acceptor: int  # Position of the acceptor site
+    donor: int  # Position of the donor site. Note: not the same as the "end" of the exon since that's exclusive
+    prev_donor: int
+    next_acceptor: int
+    phase_start: int  # The phase of the start of the exon, 0, 1, or 2
+
+    @property
+    def text(self):
+        x, _ = load_validation_gene(self.gene_idx)
+        return x.argmax(-1)[self.acceptor : self.donor + 1]
+
+    @property
+    def all_locations(self):
+        return self.prev_donor, self.acceptor, self.donor, self.next_acceptor
+
+    @property
+    def length(self):
+        return self.donor - self.acceptor + 1
+
+    def to_dict(self):
+        return {
+            "gene_idx": int(self.gene_idx),
+            "acceptor": int(self.acceptor),
+            "donor": int(self.donor),
+            "prev_donor": int(self.prev_donor),
+            "next_acceptor": int(self.next_acceptor),
+            "phase_start": int(self.phase_start),
+        }

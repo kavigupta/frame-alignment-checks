@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="frame-alignment-checks",
-    version="0.0.0",
+    version="0.0.1",
     author="Kavi Gupta",
     author_email="frame-alignment-checks@kavigupta.org",
     description="Library for determining whether a RNA splicing predictor is using frame alignment information",
@@ -14,6 +14,7 @@ setuptools.setup(
     url="https://github.com/kavigupta/frame-alignment-checks",
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
+    package_data={"frame_alignment_checks.data": ["**/*.npz", "**/*.json"]},
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3.9",

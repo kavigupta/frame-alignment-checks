@@ -1,0 +1,99 @@
+import numpy as np
+from permacache import permacache
+
+from .utils import all_3mers, stable_hash_cached, collect_windows, extract_center
+from .run_batched import run_batched
+from .data.load import load_validation_gene
+
+
+def with_all_codons(original_seq, codon_start_loc):
+    """
+    Takes an original sequence and returns a batched sequence with
+    all possible codons at codon_start_loc.
+
+    :param original_seq: the original sequence (L, 4)
+    :param codon_start_loc: the location of the start of the codon
+
+    Returns: (64, L, 4)
+    """
+    seqs = np.repeat(original_seq[None], 64, axis=0)
+    seqs[:, codon_start_loc : codon_start_loc + 3] = all_3mers().astype(seqs.dtype)
+    return seqs
+
+
+@permacache(
+    "modular_splicing/frame_alignment/codon_stop_replacement/mutated_codons_experiment",
+    key_function=dict(
+        model=stable_hash_cached,
+        ex=lambda ex: sorted(ex.__dict__.items()),
+    ),
+)
+def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
+    """
+    Run an experiment to see how mutating "codons" (3mers) that are in and out of frame
+    with respect to the exon affects the model's predictions.
+
+    :param model: The model to use
+    :param model_cl: The context length of the model
+    :param x: The sequence to run the experiment on. Should be of shape (L, 4)
+    :param ex: The exon to run the experiment on, as a CodingExon
+    :param target_codon_start: The location of the start of the codon to mutate
+
+    Returns: (original_seq, original_pred, mutated_preds)
+
+    original_seq: The original 9mer sequence where the targeted codon is in the middle
+    original_pred: The model's prediction for the original sequence. Shape (2,) (acceptor, donor)
+    mutated_preds: The model's predictions for the mutated sequences. Shape (3, 64, 2)
+        mutated_preds[offset + 1, c] is the model's prediction for when you replace the 3mer
+        at target_codon_start + offset with the 3mer at index c in all_3mers().
+        I.e., mutated_preds[1] is a map from codon to the result of mutating the targeted
+        codon with that codon, and mutated_preds[0] and mutated_preds[2] are the predictions
+        for the off-frame codon mutations of phases -1 and +1. (aka 2 and 1).
+    """
+    x, _ = load_validation_gene(ex.gene_idx)
+    target_codon_start += (-(target_codon_start - (ex.acceptor - ex.phase_start))) % 3
+    original_seq = x[target_codon_start - 3 : target_codon_start + 6].argmax(-1)
+    acc, don = ex.acceptor, ex.donor
+
+    x, acc, don, target_codon_start = clip_for_efficiency(
+        model_cl, ex, target_codon_start, x, acc, don
+    )
+
+    with_mutated_codons = [
+        with_all_codons(x, loc)
+        for loc in [target_codon_start - 1, target_codon_start, target_codon_start + 1]
+    ]
+    wmc_windows_flat = np.array(
+        [
+            collect_windows(wmc, [acc, don], model_cl)
+            for wmcs in [[x], *with_mutated_codons]
+            for wmc in wmcs
+        ]
+    )
+    inital_shape = wmc_windows_flat.shape[:2]
+    assert wmc_windows_flat.shape[2:] == (model_cl + 1, 4)
+    wmc_windows_flat = wmc_windows_flat.reshape(-1, model_cl + 1, 4)
+
+    out = run_batched(lambda x: extract_center(model, x), wmc_windows_flat, 128)
+    out = out.reshape(inital_shape + (3,))
+
+    # A and D
+    out = out[:, [0, 1], [1, 2]]
+    orig_pred = out[0]
+    mut_preds = out[1:]
+    mut_preds = mut_preds.reshape(3, 64, 2)
+    return original_seq, orig_pred, mut_preds
+
+
+def clip_for_efficiency(model_cl, ex, target_codon_start, x, acc, don):
+    """
+    Clips the sequence for efficiency. This is done by taking a window around the exon.
+
+    Also offsets the acceptor, donor, and target_codon_start to be relative to the clipped sequence.
+    """
+    startloc, endloc = -10 + ex.acceptor - model_cl // 2, 10 + ex.donor + model_cl // 2
+    startloc, endloc = max(startloc, 0), min(endloc, len(x))
+    x = x[startloc:endloc]
+    target_codon_start -= startloc
+    acc, don = acc - startloc, don - startloc
+    return x, acc, don, target_codon_start
