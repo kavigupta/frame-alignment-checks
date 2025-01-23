@@ -7,6 +7,38 @@ from .run_batched import run_batched
 from .data.load import load_validation_gene, load_long_canonical_internal_coding_exons
 
 
+def stop_codon_replacement_delta_accuracy(
+    *, model, model_cl, distance_out, validation_thresholds
+):
+    """
+    Compute the delta in accuracy when replacing codons at all 3 phases with all 64 possible codons.
+
+    :param model: The model to use
+    :param model_cl: The context length of the model
+    :param distance_out: The distance from the acceptor and donor sites to mutate the codons at
+    :param validation_thresholds: The thresholds to use for the model (acceptor, donor)
+
+    :returns: (original_seqs_all, delta_accuracies)
+        original_seqs_all: The original sequences for all exons. Shape (N, 2, L)
+        delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
+            delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
+            in percentage points, when you replace the codon at distance_out from the acceptor or donor
+            (A if distance_from_which == 0, D if distance_from_which == 1) with the codon at index codon
+    """
+    original_seqs_all, yps_base, yps_mut = mutate_codons_experiment_all(
+        model=model,
+        model_cl=model_cl,
+        distance_out=distance_out,
+    )
+    yps_base, yps_mut = [
+        (x > validation_thresholds).astype(np.float64) for x in (yps_base, yps_mut)
+    ]
+    yps_mut_near_exon = yps_mut[:, [0, 1], :, :, [0, 1]]
+    return original_seqs_all, 100 * (
+        yps_mut_near_exon.transpose(1, 0, 2, 3) - yps_base[:, :, None, None]
+    )
+
+
 def with_all_codons(original_seq, codon_start_loc):
     """
     Takes an original sequence and returns a batched sequence with
