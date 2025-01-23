@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from .data.load import load_validation_gene
-
 
 @dataclass
 class CodingExon:
@@ -18,6 +16,8 @@ class CodingExon:
 
     @property
     def text(self):
+        from .data.load import load_validation_gene
+
         x, _ = load_validation_gene(self.gene_idx)
         return x.argmax(-1)[self.acceptor : self.donor + 1]
 

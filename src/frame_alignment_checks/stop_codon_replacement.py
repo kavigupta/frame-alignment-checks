@@ -1,9 +1,10 @@
 import numpy as np
 from permacache import permacache
+import tqdm.auto as tqdm
 
 from .utils import all_3mers, stable_hash_cached, collect_windows, extract_center
 from .run_batched import run_batched
-from .data.load import load_validation_gene
+from .data.load import load_validation_gene, load_long_canonical_internal_coding_exons
 
 
 def with_all_codons(original_seq, codon_start_loc):
@@ -97,3 +98,44 @@ def clip_for_efficiency(model_cl, ex, target_codon_start, x, acc, don):
     target_codon_start -= startloc
     acc, don = acc - startloc, don - startloc
     return x, acc, don, target_codon_start
+
+
+def mutate_codons_experiment_all(*, model, model_cl, distance_out):
+    """
+    See mutated_codons_experiment, which this wraps, for details.
+
+    This function runs mutated_codons_experiment on all exons in exons.
+
+    Returns: (orig_preds_all, mut_preds_all)
+
+    orig_preds_all: The original predictions for all exons. Shape (N, 2)
+    mut_preds_all: The mutated predictions for all exons. Shape (N, 2, 3, 64, 2)
+        mut_preds_all[batch_idx, distance_from_which, ...] is the model's prediction
+        for when you mutate exon at batch_idx at a distance `distance_out` from
+        the acceptor or donor site (A if distance_from_which == 0, D if distance_from_which == 1)
+    """
+    original_seqs_all = []
+    mut_preds_all = []
+    orig_preds_all = []
+    for ex in tqdm.tqdm(load_long_canonical_internal_coding_exons()):
+        assert ex.donor - ex.acceptor >= 2 * distance_out
+        original_seq_acc, orig_pred_acc, mut_preds_acc = mutated_codons_experiment(
+            model=model,
+            model_cl=model_cl,
+            ex=ex,
+            target_codon_start=ex.acceptor + distance_out,
+        )
+        original_seq_don, orig_pred_don, mut_preds_don = mutated_codons_experiment(
+            model=model,
+            model_cl=model_cl,
+            ex=ex,
+            target_codon_start=ex.donor - distance_out,
+        )
+        original_seqs_all.append((original_seq_acc, original_seq_don))
+        assert np.allclose(orig_pred_acc, orig_pred_don)
+        orig_preds_all.append(orig_pred_acc)
+        mut_preds_all.append((mut_preds_acc, mut_preds_don))
+    original_seqs_all = np.array(original_seqs_all)
+    orig_preds_all = np.array(orig_preds_all)
+    mut_preds_all = np.array(mut_preds_all)
+    return original_seqs_all, orig_preds_all, mut_preds_all
