@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class CodingExon:
@@ -31,10 +33,10 @@ class CodingExon:
 
     def to_dict(self):
         return {
-            "gene_idx": int(self.gene_idx),
-            "acceptor": int(self.acceptor),
-            "donor": int(self.donor),
-            "prev_donor": int(self.prev_donor),
-            "next_acceptor": int(self.next_acceptor),
-            "phase_start": int(self.phase_start),
+            "gene_idx": self.gene_idx,
+            "acceptor": self.acceptor,
+            "donor": self.donor,
+            "prev_donor": self.prev_donor,
+            "next_acceptor": self.next_acceptor,
+            "phase_start": self.phase_start,
         }
