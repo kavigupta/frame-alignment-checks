@@ -75,3 +75,23 @@ def extract_center(model, xs):
     yps = yps[:, yps.shape[1] // 2]
     yps = yps.softmax(-1)
     return yps
+
+
+def boostrap_series(ys):
+    bootstrap = ys[np.random.RandomState(0).choice(len(ys), size=(len(ys), 10_000))]
+    bootstrap = bootstrap.mean(0)
+    lo, hi = np.percentile(bootstrap, [2.5, 97.5], axis=0)
+    return lo, hi
+
+
+def draw_bases(xs):
+    if xs.dtype == np.int and 0 < xs.max() < 4:
+        xs = np.eye(4)[xs]
+    assert xs.shape[-1] == 4 and len(xs.shape) > 1
+    if len(xs.shape) == 2:
+        mask = (xs == 0).all(-1)
+        xs = xs.argmax(-1)
+        xs = np.array(list("ACGT"))[xs]
+        xs[mask] = "N"
+        return "".join(xs)
+    return [draw_bases(x) for x in xs]

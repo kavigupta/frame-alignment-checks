@@ -5,5 +5,11 @@ from .stop_codon_replacement import (
 )
 
 from .stop_codon_replacement_no_undesired_changes import (
-    stop_codon_no_undesired_changes_mask
+    stop_codon_no_undesired_changes_mask,
+)
+
+from .plotting.codon_stop import (
+    plot_stop_codon_acc_delta_per_codon,
+    plot_stop_codon_acc_delta_summary_as_image,
+    plot_stop_codon_acc_delta_summary,
 )
