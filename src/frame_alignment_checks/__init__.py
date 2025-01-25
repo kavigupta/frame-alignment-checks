@@ -1,6 +1,6 @@
 from .coding_exon import CodingExon
 from .compute_stop_codons import is_stop, sequence_to_codons
-from .deletion import accuracy_given_deletion_experiment
+from .deletion import accuracy_given_deletion_experiment, ModelForDeletion
 from .stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
 )

@@ -1,7 +1,9 @@
+from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 import numpy as np
 from permacache import permacache, stable_hash
+import torch
 import tqdm.auto as tqdm
 
 from .coding_exon import CodingExon
@@ -12,11 +14,17 @@ from .run_batched import run_batched
 from .utils import collect_windows, extract_center, stable_hash_cached
 
 
-def accuracy_given_deletion_experiment(model, model_cl, repair_strategy_spec, **kwargs):
+@dataclass
+class ModelForDeletion:
+    model: torch.nn.Module
+    model_cl: int
+
+
+def accuracy_given_deletion_experiment(model_for_deletion, repair_strategy_spec, **kwargs):
     return basic_deletion_experiment_multi(
         load_long_canonical_internal_coding_exons(),
-        model,
-        model_cl,
+        model_for_deletion.model,
+        model_for_deletion.model_cl,
         repair_strategy_spec,
         **kwargs,
     )
