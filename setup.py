@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="frame-alignment-checks",
-    version="0.0.12",
+    version="0.0.13",
     author="Kavi Gupta",
     author_email="frame-alignment-checks@kavigupta.org",
     description="Library for determining whether a RNA splicing predictor is using frame alignment information",
