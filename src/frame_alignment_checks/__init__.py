@@ -1,3 +1,4 @@
+from .deletion_num_stops import num_in_frame_stops
 from .coding_exon import CodingExon
 from .compute_stop_codons import is_stop, sequence_to_codons
 from .deletion import accuracy_delta_given_deletion_experiment, ModelForDeletion
