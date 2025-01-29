@@ -9,7 +9,7 @@ from ..run_batched import run_batched
 
 
 from ..compute_stop_codons import all_frames_closed
-from ..data.load import load_minigene
+from ..data.load import load_minigene, load_saturation_mutagenesis_table
 
 from ..utils import extract_center, parse_sequence_as_one_hot
 
@@ -25,9 +25,7 @@ def load_mutagenesis_table():
     """
     Load the table from the saturation mutagenesis paper.
     """
-    data = pd.read_excel(
-        "https://genome.cshlp.org/content/suppl/2017/12/14/gr.219683.116.DC1/Supplemental_Table_S2.xlsx"
-    )
+    data = load_saturation_mutagenesis_table()
     data.columns = [
         "id",
         "hexmut_number",

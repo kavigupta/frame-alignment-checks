@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import pandas as pd
 import pkg_resources
 
 from ..coding_exon import CodingExon
@@ -27,3 +28,11 @@ def load_minigene(gene, exon):
     )
     with open(path, "rb") as f:
         return pickle.load(f)
+
+
+def load_saturation_mutagenesis_table():
+    path = pkg_resources.resource_filename(
+        "frame_alignment_checks",
+        "data/saturation_mutagenesis_Supplemental_Table_S2.xlsx",
+    )
+    return pd.read_excel(path)
