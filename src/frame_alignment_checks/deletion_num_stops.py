@@ -107,3 +107,7 @@ def num_in_frame_stops(distance_out):
     num_stops = num_stops_by_phase(distance_out)
     one_hot_phase = np.eye(3, dtype=int)[phase_to_pull_from_each()]
     return (one_hot_phase.transpose(3, 0, 1, 2) * num_stops).sum(0)
+
+
+def num_open_reading_frames(distance_out):
+    return (num_stops_by_phase(distance_out) == 0).sum(0)
