@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Dict, Tuple
 import numpy as np
 from permacache import stable_hash
 
@@ -95,3 +96,32 @@ def draw_bases(xs):
         xs[mask] = "N"
         return "".join(xs)
     return [draw_bases(x) for x in xs]
+
+
+def display_permutation_test_p_values(results: Dict[Tuple[str, str], float], title):
+    """
+    Print the p values of the permutation test for the given results. The results should be a dictionary
+    where the keys are the names of the models and the values are the results for each seed.
+    """
+    print(f"P value of comparison: {title}")
+    for (k1, k2), p in results.items():
+        print(f"{k1:20s} {k2:20s} {p:.4f} {'*' if p < 0.05 else ''}")
+
+
+def permutation_test(xs, ys, count=10**4):
+    """
+    Perform a permutation test to determine the p value of the difference of means between xs and ys,
+    where the null hypothesis is that the means are the same. Returns a two-tailed p value.
+    """
+    complete = np.concatenate([xs, ys])
+    rng = np.random.RandomState(0)
+    results = np.zeros((complete.shape[0], count - 1))
+    for i in range(results.shape[1]):
+        rng.shuffle(complete)
+        results[:, i] = complete[:]
+    xs_permute, ys_permute = results[: len(xs)], results[len(xs) :]
+    bad = (
+        np.abs(np.mean(xs) - np.mean(ys))
+        <= np.abs(xs_permute.mean(0) - ys_permute.mean(0))
+    ).sum()
+    return (bad + 1) / (results.shape[1] + 1)

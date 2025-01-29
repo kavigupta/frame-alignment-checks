@@ -1,3 +1,4 @@
+from .plotting.multi_seed_experiment import plot_multi_seed_experiment
 from .deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .coding_exon import CodingExon
 from .compute_stop_codons import is_stop, sequence_to_codons, all_frames_closed
@@ -22,3 +23,4 @@ from .real_experiments.experiment_results import (
     ExperimentResultByModel,
 )
 from .real_experiments.math import k_closest_index_array
+from .utils import display_permutation_test_p_values
