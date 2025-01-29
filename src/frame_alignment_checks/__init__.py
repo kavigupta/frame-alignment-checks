@@ -15,3 +15,10 @@ from .plotting.codon_stop import (
     plot_stop_codon_acc_delta_summary_as_image,
     plot_stop_codon_acc_delta_summary,
 )
+
+from .real_experiments.plot_masks import plot_raw_real_experiment_results
+from .real_experiments.experiment_results import (
+    ExperimentResult,
+    ExperimentResultByModel,
+)
+from .real_experiments.math import k_closest_index_array
