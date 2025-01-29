@@ -47,3 +47,27 @@ def is_stop(codons):
     TGA = [3, 2, 0]
     stops = TAG, TAA, TGA
     return np.any([(codons == stop).all(-1) for stop in stops], axis=0)
+
+
+def all_frames_closed(exon_sequences):
+    """
+    Compute whether all frames are closed for a set of exon sequences.
+
+    Parameters
+    ----------
+    exon_sequences: List[np.ndarray]
+        The exon sequences to check. Each sequence should be of shape (N, 4).
+
+    Returns
+    -------
+    np.ndarray
+        A boolean array of shape (N,) where True indicates that all frames are closed.
+    """
+    return np.array(
+        [
+            np.array(
+                [is_stop(sequence_to_codons(x, off)).any(-1) for x in exon_sequences]
+            )
+            for off in range(3)
+        ]
+    ).all(0)
