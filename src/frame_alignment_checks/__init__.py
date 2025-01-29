@@ -1,3 +1,6 @@
+from frame_alignment_checks.real_experiments.plot_summary import (
+    plot_real_experiment_summary,
+)
 from .plotting.multi_seed_experiment import plot_multi_seed_experiment
 from .deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .coding_exon import CodingExon
