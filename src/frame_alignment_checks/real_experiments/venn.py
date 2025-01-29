@@ -1,6 +1,13 @@
 import numpy as np
 from matplotlib_venn import venn3
 
+from frame_alignment_checks.real_experiments.saturation_mutagenesis import (
+    SEQUENCE_PADDING_LEFT,
+    SEQUENCE_PADDING_RIGHT,
+    load_mutagenesis_table,
+    mutagenesis_sequence_reading_frame_closed,
+)
+
 
 def closed_reading_frames_venn(ax, title, reading_frames_closed, tag, taa, tga):
     venn3(
@@ -9,3 +16,21 @@ def closed_reading_frames_venn(ax, title, reading_frames_closed, tag, taa, tga):
         ax=ax,
     )
     ax.set_title(f"{title}\nSequences where all reading frames are closed contain")
+
+
+def closed_reading_frames_venn_sm(ax):
+    table = load_mutagenesis_table()
+    tag, taa, tga = [
+        table.sequence.apply(
+            lambda x: x[SEQUENCE_PADDING_LEFT:-SEQUENCE_PADDING_RIGHT].count(trimer)
+        )
+        for trimer in ["TAG", "TAA", "TGA"]
+    ]
+    closed_reading_frames_venn(
+        ax,
+        "Saturation Mutagenesis",
+        mutagenesis_sequence_reading_frame_closed(),
+        tag,
+        taa,
+        tga,
+    )

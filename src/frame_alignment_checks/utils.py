@@ -125,3 +125,13 @@ def permutation_test(xs, ys, count=10**4):
         <= np.abs(xs_permute.mean(0) - ys_permute.mean(0))
     ).sum()
     return (bad + 1) / (results.shape[1] + 1)
+
+
+def parse_sequence_as_one_hot(nt_sequence: str):
+    """
+    Parse a string genomic sequence as one hot encoding.
+    """
+    table = np.concatenate(
+        [np.eye(4, dtype=np.uint8), np.zeros((1, 4), dtype=np.uint8)]
+    )
+    return table[["ACGTN".index(nt) for nt in nt_sequence]]

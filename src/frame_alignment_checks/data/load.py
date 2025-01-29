@@ -19,3 +19,11 @@ def load_long_canonical_internal_coding_exons():
     )
     with open(path, "rb") as f:
         return [CodingExon(**d) for d in pickle.load(f)]
+
+
+def load_minigene(gene, exon):
+    path = pkg_resources.resource_filename(
+        "frame_alignment_checks", f"data/minigene_{gene}_{exon}.pkl"
+    )
+    with open(path, "rb") as f:
+        return pickle.load(f)
