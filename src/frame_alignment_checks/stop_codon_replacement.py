@@ -1,9 +1,9 @@
 import numpy as np
 from permacache import permacache
 import tqdm.auto as tqdm
+from run_batched import run_batched
 
 from .utils import all_3mers, stable_hash_cached, collect_windows, extract_center
-from .run_batched import run_batched
 from .data.load import load_validation_gene, load_long_canonical_internal_coding_exons
 
 

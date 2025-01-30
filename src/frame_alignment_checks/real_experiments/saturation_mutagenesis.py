@@ -2,11 +2,9 @@ import pandas as pd
 import numpy as np
 from permacache import permacache, stable_hash
 import tqdm.auto as tqdm
+from run_batched import run_batched
 
 from .experiment_results import ExperimentResult, ExperimentResultByModel
-
-from ..run_batched import run_batched
-
 
 from ..compute_stop_codons import all_frames_closed
 from ..data.load import load_minigene, load_saturation_mutagenesis_table

@@ -2,9 +2,9 @@ from functools import lru_cache
 import numpy as np
 from permacache import permacache
 import tqdm.auto as tqdm
+from run_batched import run_batched
 
 from ..data.load import load_non_stop_donor_windows
-from ..run_batched import run_batched
 from ..utils import all_seqs, extract_center, stable_hash_cached
 
 

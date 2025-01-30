@@ -5,12 +5,12 @@ import numpy as np
 from permacache import permacache, stable_hash
 import torch
 import tqdm.auto as tqdm
+from run_batched import run_batched
 
 from .coding_exon import CodingExon
 from .construct import construct
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .deletion_repair import repair_strategy_types
-from .run_batched import run_batched
 from .utils import collect_windows, extract_center, stable_hash_cached
 
 
