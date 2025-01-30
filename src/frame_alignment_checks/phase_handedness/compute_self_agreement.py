@@ -17,6 +17,18 @@ def all_9mers():
     return np.array(list(all_seqs(9)))
 
 
+def phase_swapping_self_agreement_score(m, cl_model, can_seq, *, mode):
+    """
+    Returns self-agreement scores, per pair of phases.
+
+    A self-agreement score is how much a model agrees with itself when the 9mer phase and the donor phase are the same
+        versus when they are different.
+    """
+    by_phase = phase_swapping_experiment(m, cl_model, can_seq, mode=mode)
+    diag = np.eye(3, dtype=np.bool)
+    return np.mean(by_phase[diag]) - np.mean(by_phase[~diag])
+
+
 @permacache(
     "frame_alignment_checks/phase_handedness/compute_self_agreement/phase_swapping_experiment",
     key_function=dict(m=stable_hash_cached),
