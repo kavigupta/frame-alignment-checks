@@ -35,6 +35,16 @@ The minigenes are sourced from the hg19 canonical transcript, defined in the sam
 This is sourced from [https://genome.cshlp.org/content/suppl/2017/12/14/gr.219683.116.DC1/Supplemental_Table_S2.xlsx](this link) and is
 cached in this package in case the link goes down.
 
+### Phase handedness counts
+
+This is a count of how many times each donor 9mer appears in each phase. This is sourced from the SpliceAI training set, via SAM.
+
+### Non-stop donor windows
+
+This is a collection of donors from the SpliceAI test set (again via SAM), specifically ones where swapping the donor 9mer
+with an arbitrary sequence would not introduce a stop in the exon. Basically, we exclude conditions where the
+flanking exon ends with a sequence that is a prefix of a stop codon, these are T, TA, and TG.
+
 
 [1]: Jaganathan, Kishore, et al. "Predicting splicing from primary sequence with deep learning." Cell 176.3 (2019): 535-548.
 [2]: https://github.com/kavigupta/sam

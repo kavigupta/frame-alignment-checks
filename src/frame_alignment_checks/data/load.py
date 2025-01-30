@@ -1,3 +1,4 @@
+import gzip
 import numpy as np
 import pickle
 import pandas as pd
@@ -36,3 +37,19 @@ def load_saturation_mutagenesis_table():
         "data/saturation_mutagenesis_Supplemental_Table_S2.xlsx",
     )
     return pd.read_excel(path)
+
+
+def load_train_counts_by_phase():
+    path = pkg_resources.resource_filename(
+        "frame_alignment_checks", "data/train_handedness_counts.npz"
+    )
+    with np.load(path) as data:
+        return data["arr_0"]
+
+
+def load_non_stop_donor_windows():
+    path = pkg_resources.resource_filename(
+        "frame_alignment_checks", "data/phase_handedness_test_set.pkl.gz"
+    )
+    with gzip.open(path, "rb") as f:
+        return pickle.load(f)
