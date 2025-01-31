@@ -28,22 +28,18 @@ def accuracy_delta_given_deletion_experiment(
     binary_metric,
     mod_for_base,
 ):
-    yps_base_orig, yps_deletions, _ = accuracy_given_deletion_experiment(
+    assert mod.model is not None
+    if mod_for_base is None:
+        mod_for_base = mod
+    _, yps_deletions, _ = accuracy_given_deletion_experiment(
         mod, repair_spec, distance_out=distance_out
     )
-    if mod_for_base.model is not None:
-        yps_base, _, _ = accuracy_given_deletion_experiment(
-            mod_for_base, repair_spec, distance_out=distance_out
-        )
-    else:
-        yps_base = yps_base_orig
-    if binary_metric and mod.model is not None:
+    yps_base, _, _ = accuracy_given_deletion_experiment(
+        mod_for_base, repair_spec, distance_out=distance_out
+    )
+    if binary_metric:
         thresh_dada = mod.thresholds[[1, 0, 1, 0]]
-        thresh_base_dada = (
-            mod_for_base.thresholds
-            if mod_for_base.model is not None
-            else mod.thresholds
-        )[[1, 0, 1, 0]]
+        thresh_base_dada = mod_for_base.thresholds[[1, 0, 1, 0]]
         yps_deletions = (yps_deletions > thresh_dada).astype(np.float64)
         yps_base = (yps_base > thresh_base_dada).astype(np.float64)
     delta = yps_deletions - yps_base[:, None, None, :]
