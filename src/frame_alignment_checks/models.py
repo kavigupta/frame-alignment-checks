@@ -12,8 +12,3 @@ class ModelToAnalyze:
     model: torch.nn.Module
     model_cl: int
     thresholds: np.ndarray
-
-
-@dataclass
-class ModelsToAnalyze:
-    models: Dict[str, List[ModelToAnalyze]]

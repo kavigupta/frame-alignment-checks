@@ -1,9 +1,11 @@
-from typing import Callable, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 from permacache import permacache, stable_hash
 import tqdm.auto as tqdm
 from run_batched import run_batched
+
+from frame_alignment_checks.models import ModelToAnalyze
 
 from .coding_exon import CodingExon
 from .construct import construct
@@ -12,8 +14,36 @@ from .deletion_repair import repair_strategy_types
 from .utils import collect_windows, extract_center, stable_hash_cached
 
 
+def accuracy_delta_given_deletion_experiment_for_multiple_series(
+    mods: Dict[str, List[ModelToAnalyze]], repair_spec, distance_out, binary_metric
+):
+    return {
+        name: accuracy_delta_given_deletion_experiment_for_series(
+            mod, repair_spec, distance_out, binary_metric
+        )
+        for name, mod in mods.items()
+    }
+
+
+def accuracy_delta_given_deletion_experiment_for_series(
+    mod: List[ModelToAnalyze],
+    repair_spec,
+    distance_out,
+    binary_metric,
+    mod_for_base=None,
+):
+    return np.array(
+        [
+            accuracy_delta_given_deletion_experiment(
+                m, repair_spec, distance_out, binary_metric, mod_for_base
+            )
+            for m in mod
+        ]
+    )
+
+
 def accuracy_delta_given_deletion_experiment(
-    mod,
+    mod: ModelToAnalyze,
     repair_spec,
     distance_out,
     binary_metric,
