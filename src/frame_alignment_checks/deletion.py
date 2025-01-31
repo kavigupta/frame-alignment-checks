@@ -18,6 +18,7 @@ from .utils import collect_windows, extract_center, stable_hash_cached
 class ModelForDeletion:
     model: torch.nn.Module
     model_cl: int
+    thresholds: np.ndarray
 
 
 def accuracy_delta_given_deletion_experiment(
@@ -26,9 +27,6 @@ def accuracy_delta_given_deletion_experiment(
     distance_out,
     binary_metric,
     mod_for_base,
-    *,
-    thresholds,
-    thresholds_for_base,
 ):
     yps_base_orig, yps_deletions, _ = accuracy_given_deletion_experiment(
         mod, repair_spec, distance_out=distance_out
@@ -40,17 +38,21 @@ def accuracy_delta_given_deletion_experiment(
     else:
         yps_base = yps_base_orig
     if binary_metric and mod.model is not None:
-        thresh_dada = thresholds[[1, 0, 1, 0]]
-        thresh_base_dada = thresholds_for_base[[1, 0, 1, 0]]
+        thresh_dada = mod.thresholds[[1, 0, 1, 0]]
+        thresh_base_dada = (
+            mod_for_base.thresholds
+            if mod_for_base.model is not None
+            else mod.thresholds
+        )[[1, 0, 1, 0]]
         yps_deletions = (yps_deletions > thresh_dada).astype(np.float64)
         yps_base = (yps_base > thresh_base_dada).astype(np.float64)
-        yps_base_orig = (yps_base_orig > thresh_base_dada).astype(np.float64)
-    zero = (yps_base_orig - yps_base).mean(0)
     delta = yps_deletions - yps_base[:, None, None, :]
-    return zero, delta
+    return delta
 
 
-def accuracy_given_deletion_experiment(model_for_deletion, repair_strategy_spec, **kwargs):
+def accuracy_given_deletion_experiment(
+    model_for_deletion, repair_strategy_spec, **kwargs
+):
     return basic_deletion_experiment_multi(
         load_long_canonical_internal_coding_exons(),
         model_for_deletion.model,
