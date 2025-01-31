@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Tuple
 
 import numpy as np
@@ -12,6 +13,119 @@ from .construct import construct
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .deletion_repair import repair_strategy_types
 from .utils import collect_windows, extract_center, stable_hash_cached
+
+basic_deletion_experiment_locations = [
+    "left of A",
+    "right of A",
+    "left of D",
+    "right of D",
+]
+
+basic_deletion_experiment_affected_splice_sites = ["PD", "A", "D", "NA"]
+
+
+@dataclass
+class DeletionAccuracyDeltaResult:
+    """
+    Contains the raw output of the deletion experiment, as well as several
+    methods for summarization.
+
+    :param raw_data: The raw data from the deletion experiment.
+        Called as
+        raw_data[seed, exon_id, deletion - 1, deletion_location, affected_splice_site]
+    """
+
+    raw_data: np.ndarray
+
+    @classmethod
+    def concatenate(
+        cls, results: List["DeletionAccuracyDeltaResult"]
+    ) -> "DeletionAccuracyDeltaResult":
+        return cls(np.concatenate([r.raw_data for r in results], axis=0))
+
+    def mean_effect_matrix(self, num_deletions) -> np.ndarray:
+        """
+        Returns a matrix representing the mean effect of ``num_deletions`` deletions at
+        each location on each splice site.
+
+        :param num_deletions: The number of deletions to consider.
+        :return: The mean effect matrix. Shape (4, 4). The rows represent deletion
+            locations, and the columns represent affected splice sites.
+        """
+        return self.raw_data[:, :, num_deletions - 1].mean((0, 1))
+
+    def mean_effect_series(
+        self, deletion_location, affected_splice_site, mean=True
+    ) -> np.ndarray:
+        """
+        Returns the mean effect of deletions at the given location on the given splice site.
+
+        :param deletion_location: The location of the deletion. One of
+            ``basic_deletion_experiment_locations``.
+        :param affected_splice_site: The affected splice site. One of
+            ``basic_deletion_experiment_affected_splice_sites``.
+        :param mean: Whether to take the mean across all exons.
+        :return: The mean effect by deletion location. This is not aggregated over
+            deletions or seeds. Shape: (num_seeds, num_deletions)
+        """
+        deletion_location_idx = basic_deletion_experiment_locations.index(
+            deletion_location
+        )
+        affected_splice_site_idx = (
+            basic_deletion_experiment_affected_splice_sites.index(affected_splice_site)
+        )
+        result = self.raw_data[:, :, :, deletion_location_idx, affected_splice_site_idx]
+        if not mean:
+            return result
+        return result.mean(1)
+
+    def mean_effect_masked(
+        self,
+        mask=None,
+        deletion_locations=("right of A", "left of D"),
+        affected_splice_sites=("A", "D"),
+    ) -> np.ndarray:
+        """
+        Compute the mean effect of deletions on the given deletion locations and splice sites, with a mask.
+
+        :param mask: A mask to apply to the data. If provided, the mask should be
+            of the shape mask[exon_id, num_deletions - 1, deletion_location out of deletion_locations].
+        :return: The mean effect of deletions at the given locations on the given sites. Shape (num_seeds, num_deletions).
+            Only computed for where the mask is present
+        """
+        mask_shape = (
+            self.raw_data.shape[1],
+            self.raw_data.shape[2],
+            len(deletion_locations),
+        )
+        if mask is None:
+            mask = np.ones(mask_shape)
+        assert mask.shape == mask_shape
+        selected_data = np.stack(
+            [
+                np.mean(
+                    [
+                        self.mean_effect_series(
+                            deletion_location, affected_splice_site, mean=False
+                        )
+                        for affected_splice_site in affected_splice_sites
+                    ],
+                    axis=0,
+                )
+                for deletion_location in deletion_locations
+            ],
+            axis=-1,
+        )
+        # selecetd_data is of shape (num_seeds, num_exons, num_deletions, num_deletion_locations)
+        assert selected_data.shape[1:] == mask.shape
+        # numerator aggregates over exon_id and deletion_location
+        numer = (selected_data * mask).sum((1, 3))
+        # denominator aggregates over the same
+        denom = mask.sum((0, 2))
+        frac = numer.copy()
+        frac[:, denom > 0] /= denom[denom > 0]
+        frac[:, denom == 0] = np.nan
+        return frac
 
 
 def accuracy_delta_given_deletion_experiment_for_multiple_series(
@@ -40,7 +154,7 @@ def accuracy_delta_given_deletion_experiment_for_series(
     binary_metric=True,
     mod_for_base=None,
 ):
-    return np.array(
+    return DeletionAccuracyDeltaResult.concatenate(
         [
             accuracy_delta_given_deletion_experiment(
                 m,
@@ -77,7 +191,7 @@ def accuracy_delta_given_deletion_experiment(
         yps_deletions = (yps_deletions > thresh_dada).astype(np.float64)
         yps_base = (yps_base > thresh_base_dada).astype(np.float64)
     delta = yps_deletions - yps_base[:, None, None, :]
-    return delta
+    return DeletionAccuracyDeltaResult(delta[None])
 
 
 def accuracy_given_deletion_experiment(

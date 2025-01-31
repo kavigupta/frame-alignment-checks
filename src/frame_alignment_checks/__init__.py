@@ -14,6 +14,8 @@ from .deletion import (
     accuracy_delta_given_deletion_experiment,
     accuracy_delta_given_deletion_experiment_for_series,
     accuracy_delta_given_deletion_experiment_for_multiple_series,
+    basic_deletion_experiment_locations,
+    basic_deletion_experiment_affected_splice_sites,
 )
 from .stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
