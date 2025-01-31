@@ -1,9 +1,9 @@
 import numpy as np
 
 from frame_alignment_checks.data.load import load_long_canonical_internal_coding_exons
+from .models import ModelToAnalyze
 
 from .deletion import (
-    ModelForDeletion,
     accuracy_given_deletion_experiment,
 )
 
@@ -36,7 +36,7 @@ def num_stops_by_phase(distance_out):
     """
     num_stops = [
         accuracy_given_deletion_experiment(
-            ModelForDeletion(None, 0, 0),
+            ModelToAnalyze(None, 0, 0),
             dict(type="RemoveStopCodons", phase_wrt_start=i),
             distance_out=distance_out,
         )[2][..., [1, 2]]

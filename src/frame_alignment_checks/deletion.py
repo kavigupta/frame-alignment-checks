@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 import numpy as np
 from permacache import permacache, stable_hash
-import torch
 import tqdm.auto as tqdm
 from run_batched import run_batched
 
@@ -14,19 +12,12 @@ from .deletion_repair import repair_strategy_types
 from .utils import collect_windows, extract_center, stable_hash_cached
 
 
-@dataclass
-class ModelForDeletion:
-    model: torch.nn.Module
-    model_cl: int
-    thresholds: np.ndarray
-
-
 def accuracy_delta_given_deletion_experiment(
     mod,
     repair_spec,
     distance_out,
     binary_metric,
-    mod_for_base,
+    mod_for_base=None,
 ):
     assert mod.model is not None
     if mod_for_base is None:

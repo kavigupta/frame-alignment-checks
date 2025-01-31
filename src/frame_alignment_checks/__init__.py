@@ -1,3 +1,4 @@
+from .models import ModelToAnalyze
 from frame_alignment_checks.real_experiments.plot_summary import (
     plot_real_experiment_summary,
 )
@@ -9,7 +10,7 @@ from .plotting.multi_seed_experiment import plot_multi_seed_experiment
 from .deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .coding_exon import CodingExon
 from .compute_stop_codons import is_stop, sequence_to_codons, all_frames_closed
-from .deletion import accuracy_delta_given_deletion_experiment, ModelForDeletion
+from .deletion import accuracy_delta_given_deletion_experiment
 from .stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
 )
