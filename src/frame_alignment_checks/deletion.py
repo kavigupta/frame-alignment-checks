@@ -15,11 +15,18 @@ from .utils import collect_windows, extract_center, stable_hash_cached
 
 
 def accuracy_delta_given_deletion_experiment_for_multiple_series(
-    mods: Dict[str, List[ModelToAnalyze]], repair_spec, distance_out, binary_metric
+    mods: Dict[str, List[ModelToAnalyze]],
+    *,
+    repair_spec=dict(type="NoRepair"),
+    distance_out,
+    binary_metric=True,
 ):
     return {
         name: accuracy_delta_given_deletion_experiment_for_series(
-            mod, repair_spec, distance_out, binary_metric
+            mod,
+            repair_spec=repair_spec,
+            distance_out=distance_out,
+            binary_metric=binary_metric,
         )
         for name, mod in mods.items()
     }
@@ -27,15 +34,20 @@ def accuracy_delta_given_deletion_experiment_for_multiple_series(
 
 def accuracy_delta_given_deletion_experiment_for_series(
     mod: List[ModelToAnalyze],
-    repair_spec,
+    *,
+    repair_spec=dict(type="NoRepair"),
     distance_out,
-    binary_metric,
+    binary_metric=True,
     mod_for_base=None,
 ):
     return np.array(
         [
             accuracy_delta_given_deletion_experiment(
-                m, repair_spec, distance_out, binary_metric, mod_for_base
+                m,
+                repair_spec=repair_spec,
+                distance_out=distance_out,
+                binary_metric=binary_metric,
+                mod_for_base=mod_for_base,
             )
             for m in mod
         ]
@@ -44,9 +56,10 @@ def accuracy_delta_given_deletion_experiment_for_series(
 
 def accuracy_delta_given_deletion_experiment(
     mod: ModelToAnalyze,
-    repair_spec,
+    *,
+    repair_spec=dict(type="NoRepair"),
     distance_out,
-    binary_metric,
+    binary_metric=True,
     mod_for_base=None,
 ):
     assert mod.model is not None
