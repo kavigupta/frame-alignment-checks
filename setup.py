@@ -31,6 +31,7 @@ setuptools.setup(
         "tqdm>4.0.0",
         "render-psam>=1.0.1",
         "run-batched>=1.0.2",
+        "matplotlib_venn>=1.1.1",
     ],
     # documentation
     project_urls={
