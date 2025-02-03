@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def bootstrap(vals, n=10000, percentile=5):
     """
     Bootstrap a set of values to get a confidence interval.

@@ -1,6 +1,5 @@
-from frozendict import frozendict
-
 import numpy as np
+from frozendict import frozendict
 
 from ..plotting.multi_seed_experiment import plot_multi_seed_experiment
 from ..utils import display_permutation_test_p_values

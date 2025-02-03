@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Dict, Tuple
+
 import numpy as np
 from permacache import stable_hash
 

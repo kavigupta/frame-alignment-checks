@@ -1,6 +1,7 @@
 import gzip
-import numpy as np
 import pickle
+
+import numpy as np
 import pandas as pd
 import pkg_resources
 

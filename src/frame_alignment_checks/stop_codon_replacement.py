@@ -1,10 +1,10 @@
 import numpy as np
-from permacache import permacache
 import tqdm.auto as tqdm
+from permacache import permacache
 from run_batched import run_batched
 
-from .utils import all_3mers, stable_hash_cached, collect_windows, extract_center
-from .data.load import load_validation_gene, load_long_canonical_internal_coding_exons
+from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
+from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
 
 
 def stop_codon_replacement_delta_accuracy(

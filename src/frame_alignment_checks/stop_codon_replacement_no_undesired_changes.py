@@ -1,7 +1,7 @@
 import numpy as np
 
-from .utils import all_3mers
 from .compute_stop_codons import is_stop
+from .utils import all_3mers
 
 
 def stop_codon_no_undesired_changes_mask(o_seq):

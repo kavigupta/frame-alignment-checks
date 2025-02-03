@@ -1,7 +1,7 @@
-
 import numpy as np
 
 from frame_alignment_checks.data.load import load_train_counts_by_phase
+
 
 def get_phase_specific_9mers():
     """

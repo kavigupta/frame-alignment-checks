@@ -1,10 +1,10 @@
-
 from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
 
 from .compute_stop_codons import is_stop, sequence_to_codons
+
 
 class RepairStrategy(ABC):
     """
@@ -97,4 +97,3 @@ def repair_strategy_types():
         RemoveStopCodons=RemoveStopCodons,
         RemoveStopCodonsAtoT=RemoveStopCodonsAtoT,
     )
-
