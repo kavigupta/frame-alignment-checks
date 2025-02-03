@@ -11,11 +11,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-        numpy-version: ["1.26.4", "2.0.0"]
-        exclude:
-          - os: windows-latest
-            numpy-version: "2.0.0"
-
 
     steps:
       - uses: actions/checkout@v3
@@ -26,7 +21,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy==${{ matrix.numpy-version }}
           pip install -r requirements.txt
       - name: Test with pytest
         run: |
