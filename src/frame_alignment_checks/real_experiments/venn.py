@@ -10,6 +10,7 @@ from frame_alignment_checks.real_experiments.saturation_mutagenesis import (
 
 
 def closed_reading_frames_venn(ax, title, reading_frames_closed, tag, taa, tga):
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     venn3(
         [set(np.where((w != 0) & reading_frames_closed)[0]) for w in (tag, taa, tga)],
         ("TAG", "TAA", "TGA"),
@@ -22,7 +23,9 @@ def closed_reading_frames_venn_sm(ax):
     table = load_mutagenesis_table()
     tag, taa, tga = [
         table.sequence.apply(
-            lambda x: x[SEQUENCE_PADDING_LEFT:-SEQUENCE_PADDING_RIGHT].count(trimer)
+            lambda x, trimer=trimer: x[
+                SEQUENCE_PADDING_LEFT:-SEQUENCE_PADDING_RIGHT
+            ].count(trimer)
         )
         for trimer in ["TAG", "TAA", "TGA"]
     ]

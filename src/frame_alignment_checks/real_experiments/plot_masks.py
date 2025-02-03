@@ -44,7 +44,7 @@ def compute_binned_predictor(actual, predicted):
 def plot_for_masks(
     ax, title, xlabel, result, masks, mean_quantile_by_mask, *, color_for_idx
 ):
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     predicted = result.predicteds[0]
     bins, avg_by_bin, std_by_bin, _ = compute_binned_predictor(result.actual, predicted)
     for idx, (mask, label), mean_quantile_this in zip(
