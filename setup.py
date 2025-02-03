@@ -23,7 +23,14 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.9",
-    install_requires=["numpy", "frozendict>=2.4.6", "permacache>=3.11.0", "tqdm>4.0.0"],
+    install_requires=[
+        "numpy",
+        "frozendict>=2.4.6",
+        "permacache>=3.11.0",
+        "tqdm>4.0.0",
+        "render-psam>=1.0.1",
+        "run-batched>=1.0.2",
+    ],
     # documentation
     project_urls={
         "Documentation": "https://frame-alignment-checks.readthedocs.io/en/latest/#",
