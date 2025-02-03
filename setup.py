@@ -24,6 +24,6 @@ setuptools.setup(
     install_requires=[],
     # documentation
     project_urls={
-        "Documentation": "https://NAME_OF_PACKAGE.readthedocs.io/en/latest/#",
+        "Documentation": "https://frame-alignment-checks.readthedocs.io/en/latest/#",
     },
 )
