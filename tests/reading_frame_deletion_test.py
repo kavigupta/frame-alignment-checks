@@ -1,8 +1,9 @@
 import unittest
 
-from frame_alignment_checks.deletion import perform_deletion
-from parameterized import parameterized
 import numpy as np
+from parameterized import parameterized
+
+from frame_alignment_checks.deletion import perform_deletion
 
 
 class PerformDeletionTest(unittest.TestCase):
