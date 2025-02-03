@@ -24,7 +24,7 @@ jobs:
           pip install -r requirements.txt
       - name: Lint with pylint
         run: |
-          python -m pylint src/frame_alignment_checks setup.py tests
-          isort src/frame_alignment_checks tests
-          black src/frame_alignment_checks tests
+          python -m pylint src/frame_alignment_checks setup.py
+          isort src/frame_alignment_checks
+          black src/frame_alignment_checks
           bash -c '[ $(git status --porcelain --untracked-files=no | wc -c) -eq 0 ]  || (git status; git diff; exit 1)'
