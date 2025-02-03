@@ -22,9 +22,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Test with pytest
+        run: |
+          python -m pytest tests
       - name: Lint with pylint
         run: |
-          python -m pylint src/frame_alignment_checks setup.py
-          isort src/frame_alignment_checks
-          black src/frame_alignment_checks
+          python -m pylint src/frame_alignment_checks setup.py tests
+          isort src/frame_alignment_checks tests
+          black src/frame_alignment_checks tests
           bash -c '[ $(git status --porcelain --untracked-files=no | wc -c) -eq 0 ]  || (git status; git diff; exit 1)'
