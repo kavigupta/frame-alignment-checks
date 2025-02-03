@@ -1,6 +1,5 @@
-from frozendict import frozendict
-
 import numpy as np
+from frozendict import frozendict
 
 from frame_alignment_checks.utils import permutation_test
 

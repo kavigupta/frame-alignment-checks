@@ -1,11 +1,9 @@
 import numpy as np
 
 from frame_alignment_checks.data.load import load_long_canonical_internal_coding_exons
-from .models import ModelToAnalyze
 
-from .deletion import (
-    accuracy_given_deletion_experiment,
-)
+from .deletion import accuracy_given_deletion_experiment
+from .models import ModelToAnalyze
 
 
 def get_phases():

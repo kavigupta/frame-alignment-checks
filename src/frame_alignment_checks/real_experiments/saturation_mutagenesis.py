@@ -1,15 +1,13 @@
-import pandas as pd
 import numpy as np
-from permacache import permacache, stable_hash
+import pandas as pd
 import tqdm.auto as tqdm
+from permacache import permacache, stable_hash
 from run_batched import run_batched
-
-from .experiment_results import ExperimentResult, ExperimentResultByModel
 
 from ..compute_stop_codons import all_frames_closed
 from ..data.load import load_minigene, load_saturation_mutagenesis_table
-
 from ..utils import extract_center, parse_sequence_as_one_hot
+from .experiment_results import ExperimentResult, ExperimentResultByModel
 
 SEQUENCE_PADDING_LEFT = 23
 SEQUENCE_PADDING_RIGHT = 16

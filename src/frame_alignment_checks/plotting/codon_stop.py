@@ -1,8 +1,8 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 from ..bootstrap import bootstrap
-from ..utils import boostrap_series, all_3mers, draw_bases
+from ..utils import all_3mers, boostrap_series, draw_bases
 
 
 def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
@@ -52,7 +52,9 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
     ax.set_xlim(-gap * 2, xs[-1] + gap * 2)
 
 
-def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, codon_masks, *, color_fn, **kwargs):
+def plot_stop_codon_acc_delta_summary(
+    acc_delta, mask, distance_out, codon_masks, *, color_fn, **kwargs
+):
     """
     Plot the summary of the accuracy drop per codon.
     """

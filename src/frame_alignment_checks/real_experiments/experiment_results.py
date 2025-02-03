@@ -1,9 +1,12 @@
-from typing import List, Dict, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 import numpy as np
 
-from frame_alignment_checks.real_experiments.math import k_closest_index_array, mean_quantile
+from frame_alignment_checks.real_experiments.math import (
+    k_closest_index_array,
+    mean_quantile,
+)
 
 
 @dataclass
@@ -54,7 +57,3 @@ class ExperimentResultByModel:
                     assert name1 == name2
             er_by_model.update(er_by_model_this.er_by_model)
         return cls(er_by_model, masks_each)
-
-
-
-

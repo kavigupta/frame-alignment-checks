@@ -1,11 +1,10 @@
+from render_psam import render_psams
+
 from frame_alignment_checks.data.load import load_train_counts_by_phase
 from frame_alignment_checks.phase_handedness.best_5mers_each import (
     get_phase_specific_9mers,
 )
 from frame_alignment_checks.phase_handedness.compute_self_agreement import all_9mers
-
-from render_psam import render_psams
-
 from frame_alignment_checks.utils import draw_bases
 
 

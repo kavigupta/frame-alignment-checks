@@ -1,10 +1,8 @@
+from dataclasses import dataclass
 from typing import Dict, List
 
 import numpy as np
 import torch
-
-
-from dataclasses import dataclass
 
 
 @dataclass

@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Tuple
 
 import numpy as np
-from permacache import permacache, stable_hash
 import tqdm.auto as tqdm
+from permacache import permacache, stable_hash
 from run_batched import run_batched
 
 from frame_alignment_checks.models import ModelToAnalyze
