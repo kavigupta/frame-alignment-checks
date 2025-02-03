@@ -90,7 +90,8 @@ class DeletionAccuracyDeltaResult:
 
         :param mask: A mask to apply to the data. If provided, the mask should be
             of the shape mask[exon_id, num_deletions - 1, deletion_location out of deletion_locations].
-        :return: The mean effect of deletions at the given locations on the given sites. Shape (num_seeds, num_deletions).
+        :return: The mean effect of deletions at the given locations on the given sites.
+            Shape (num_seeds, num_deletions).
             Only computed for where the mask is present
         """
         mask_shape = (
@@ -220,6 +221,8 @@ def basic_deletion_experiment_multi(
     """
     res_base, res_del, metas = zip(
         *[
+            # literally, there's **kwargs right there!
+            # pylint: disable=missing-kwoa
             basic_deletion_experiment(
                 e,
                 model,

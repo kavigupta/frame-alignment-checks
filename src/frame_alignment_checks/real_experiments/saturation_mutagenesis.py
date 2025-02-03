@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import tqdm.auto as tqdm
 from permacache import permacache, stable_hash
 from run_batched import run_batched
