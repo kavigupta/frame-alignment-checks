@@ -31,3 +31,14 @@ jobs:
           isort src/frame_alignment_checks tests
           black src/frame_alignment_checks tests
           bash -c '[ $(git status --porcelain --untracked-files=no | wc -c) -eq 0 ]  || (git status; git diff; exit 1)'
+
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Check that the docs build
+        run: |
+          cd docs && make html
