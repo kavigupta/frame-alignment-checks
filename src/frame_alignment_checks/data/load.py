@@ -1,5 +1,6 @@
 import gzip
 import pickle
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,7 @@ import pkg_resources
 from ..coding_exon import CodingExon
 
 
-def load_validation_gene(idx):
+def load_validation_gene(idx) -> Tuple[np.ndarray, np.ndarray]:
     path = pkg_resources.resource_filename(
         "frame_alignment_checks", "data/relevant_validation_genes.npz"
     )
@@ -40,7 +41,7 @@ def load_saturation_mutagenesis_table():
     return pd.read_excel(path)
 
 
-def load_train_counts_by_phase():
+def load_train_counts_by_phase() -> np.ndarray:
     path = pkg_resources.resource_filename(
         "frame_alignment_checks", "data/train_handedness_counts.npz"
     )

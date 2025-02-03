@@ -83,6 +83,8 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
         codon with that codon, and mutated_preds[0] and mutated_preds[2] are the predictions
         for the off-frame codon mutations of phases -1 and +1. (aka 2 and 1).
     """
+    # this is subscriptable. Not sure why pylint thinks it isn't
+    # pylint: disable=unsubscriptable-object
     x, _ = load_validation_gene(ex.gene_idx)
     target_codon_start += (-(target_codon_start - (ex.acceptor - ex.phase_start))) % 3
     original_seq = x[target_codon_start - 3 : target_codon_start + 6].argmax(-1)
@@ -105,7 +107,7 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     )
     inital_shape = wmc_windows_flat.shape[:2]
     assert wmc_windows_flat.shape[2:] == (model_cl + 1, 4)
-    wmc_windows_flat = wmc_windows_flat.reshape(-1, model_cl + 1, 4)
+    wmc_windows_flat = wmc_windows_flat.reshape((-1, model_cl + 1, 4))
 
     out = run_batched(lambda x: extract_center(model, x), wmc_windows_flat, 128)
     out = out.reshape(inital_shape + (3,))
@@ -114,7 +116,7 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     out = out[:, [0, 1], [1, 2]]
     orig_pred = out[0]
     mut_preds = out[1:]
-    mut_preds = mut_preds.reshape(3, 64, 2)
+    mut_preds = mut_preds.reshape((3, 64, 2))
     return original_seq, orig_pred, mut_preds
 
 
@@ -124,6 +126,7 @@ def clip_for_efficiency(model_cl, ex, target_codon_start, x, acc, don):
 
     Also offsets the acceptor, donor, and target_codon_start to be relative to the clipped sequence.
     """
+    # pylint: disable=too-many-positional-arguments
     startloc, endloc = -10 + ex.acceptor - model_cl // 2, 10 + ex.donor + model_cl // 2
     startloc, endloc = max(startloc, 0), min(endloc, len(x))
     x = x[startloc:endloc]
