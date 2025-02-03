@@ -9,6 +9,7 @@ from frame_alignment_checks.utils import draw_bases
 
 
 def relative_logos_by_phase():
+    # pylint: disable=unsubscriptable-object,no-member
     counts_by_phase = load_train_counts_by_phase()
 
     logo_overall = (counts_by_phase.sum(0)[..., None, None] * all_9mers()).sum(
@@ -34,6 +35,7 @@ def phase_handedness_plot_relative_logos(**kwargs):
 
 
 def phase_handedness_print_statistics_by_phase():
+    # pylint: disable=unsubscriptable-object,no-member
     counts_by_phase = load_train_counts_by_phase()
     phase_specific_9mers = get_phase_specific_9mers()
 

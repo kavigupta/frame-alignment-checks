@@ -44,6 +44,7 @@ def compute_binned_predictor(actual, predicted):
 def plot_for_masks(
     ax, title, xlabel, result, masks, mean_quantile_by_mask, *, color_for_idx
 ):
+    # pylint: disable=too-many-arguments
     predicted = result.predicteds[0]
     bins, avg_by_bin, std_by_bin, _ = compute_binned_predictor(result.actual, predicted)
     for idx, (mask, label), mean_quantile_this in zip(
@@ -67,7 +68,7 @@ def plot_for_masks(
         label=r"Expected $\log_2(\hat P(\mathrm{splice}))$; 95% CI",
     )
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("$\log_2(\hat P(\mathrm{splice}))$")
+    ax.set_ylabel(r"$\log_2(\hat P(\mathrm{splice}))$")
     ax.set_xlim(*np.percentile(result.actual, [2, 98]))
     ax.set_ylim(*np.percentile(predicted, [2, 98]))
     ax.legend()

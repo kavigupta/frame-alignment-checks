@@ -119,6 +119,7 @@ def plot_stop_codon_acc_delta_summary(
 
 
 def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
+    # pylint: disable=no-member
     cmap = plt.cm.viridis
     cmin, cmax = -30, 4
     overall_gap = 0.25
@@ -127,6 +128,7 @@ def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
     ys, _ = compute_codon_locations(y_gap)
     ys = ys * (1 + overall_gap)
     xmids_all = []
+    x = x_start
     for k in acc_delta:
         names, values = compute_series(acc_delta[k], no_undesired_changes)
         values = values.mean(0).T
