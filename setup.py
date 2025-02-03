@@ -11,7 +11,9 @@ setuptools.setup(
     url="https://github.com/kavigupta/frame-alignment-checks",
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
-    package_data={"frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]},
+    package_data={
+        "frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]
+    },
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3.9",
@@ -21,7 +23,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.9",
-    install_requires=[],
+    install_requires=["numpy", "frozendict>=2.4.6", "permacache>=3.11.0", "tqdm>4.0.0"],
     # documentation
     project_urls={
         "Documentation": "https://frame-alignment-checks.readthedocs.io/en/latest/#",
