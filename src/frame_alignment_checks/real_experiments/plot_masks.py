@@ -64,7 +64,7 @@ def plot_for_masks(
         avg_by_bin + 2 * std_by_bin,
         alpha=0.10,
         color="black",
-        label="Expected $\log_2(\hat P(\mathrm{splice}))$; 95% CI",
+        label=r"Expected $\log_2(\hat P(\mathrm{splice}))$; 95% CI",
     )
     ax.set_xlabel(xlabel)
     ax.set_ylabel("$\log_2(\hat P(\mathrm{splice}))$")

@@ -8,13 +8,16 @@ setuptools.setup(
     version="0.0.31",
     author="Kavi Gupta",
     author_email="frame-alignment-checks@kavigupta.org",
-    description="Library for determining whether a RNA splicing predictor is using frame alignment information",
+    description="Library for determining whether a RNA splicing "
+    "predictor is using frame alignment information",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/kavigupta/frame-alignment-checks",
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
-    package_data={"frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]},
+    package_data={
+        "frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]
+    },
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3.9",
