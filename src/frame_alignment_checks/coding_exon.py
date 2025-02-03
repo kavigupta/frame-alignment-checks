@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import numpy as np
-
 
 @dataclass
 class CodingExon:
@@ -18,6 +16,7 @@ class CodingExon:
 
     @property
     def text(self):
+        # pylint: disable=cyclic-import,no-member
         from .data.load import load_validation_gene
 
         x, _ = load_validation_gene(self.gene_idx)

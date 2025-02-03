@@ -28,6 +28,7 @@ def stable_hash_cached(model):
 
     Note: **only use this function if the model is not going to change**.
     """
+    # pylint: disable=protected-access
     if model is None:
         return stable_hash(None)
     assert not model.training

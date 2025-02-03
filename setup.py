@@ -5,7 +5,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     author_email="frame-alignment-checks@kavigupta.org",
-    description="Library for determining whether a RNA splicing predictor is using frame alignment information",
+    description="Library for determining whether a RNA splicing "
+    "predictor is using frame alignment information",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/kavigupta/frame-alignment-checks",
@@ -30,6 +31,7 @@ setuptools.setup(
         "tqdm>4.0.0",
         "render-psam>=1.0.1",
         "run-batched>=1.0.2",
+        "matplotlib_venn>=1.1.1",
     ],
     # documentation
     project_urls={
