@@ -3,13 +3,13 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import tqdm.auto as tqdm
+from dconstruct import construct
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
 from frame_alignment_checks.models import ModelToAnalyze
 
 from .coding_exon import CodingExon
-from .construct import construct
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .deletion_repair import repair_strategy_types
 from .utils import collect_windows, extract_center, stable_hash_cached
