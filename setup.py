@@ -32,6 +32,7 @@ setuptools.setup(
         "render-psam>=1.0.1",
         "run-batched>=1.0.2",
         "matplotlib_venn>=1.1.1",
+        "dconstruct>=1.0.0",
     ],
     # documentation
     project_urls={
