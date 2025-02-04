@@ -5,6 +5,8 @@ import tqdm.auto as tqdm
 from permacache import permacache
 from run_batched import run_batched
 
+from frame_alignment_checks.models import ModelToAnalyze
+
 from ..data.load import load_non_stop_donor_windows
 from ..utils import all_seqs, extract_center, stable_hash_cached
 
@@ -17,14 +19,14 @@ def all_9mers():
     return np.array(list(all_seqs(9)))
 
 
-def phase_swapping_self_agreement_score(m, cl_model, can_seq, *, mode):
+def phase_swapping_self_agreement_score(m: ModelToAnalyze, can_seq, *, mode):
     """
     Returns self-agreement scores, per pair of phases.
 
     A self-agreement score is how much a model agrees with itself when the 9mer phase and the donor phase are the same
         versus when they are different.
     """
-    by_phase = phase_swapping_experiment(m, cl_model, can_seq, mode=mode)
+    by_phase = phase_swapping_experiment(m.model, m.cl_model_clipped, can_seq, mode=mode)
     diag = np.eye(3, dtype=np.bool)
     return np.mean(by_phase[diag]) - np.mean(by_phase[~diag])
 

@@ -34,7 +34,7 @@ def num_stops_by_phase(distance_out):
     """
     num_stops = [
         accuracy_given_deletion_experiment(
-            ModelToAnalyze(None, 0, 0),
+            ModelToAnalyze(None, 0, 0, 0),
             dict(type="RemoveStopCodons", phase_wrt_start=i),
             distance_out=distance_out,
         )[2][..., [1, 2]]
