@@ -19,7 +19,32 @@ def all_9mers():
     return np.array(list(all_seqs(9)))
 
 
-def phase_swapping_self_agreement_score(m: ModelToAnalyze, can_seq, *, mode):
+def phase_handedness_self_agreement_score_for_multiple_series(models, can_seq, mode):
+    """
+    Compute swapping results for the given models.
+
+    models: A dictionary of models, where the keys are the names of the models and the values are lists of models.
+    cl_model: The context length of the model.
+    can_seq: The canonical 9mers for each phase.
+    mode: The mode to use. Can be "log_prob" or "quantile".
+
+    Returns a dictionary of the results, where the keys are the names of the models and the values are the results
+        for each seed. The results are the mean self-agreement scores for each pair of phases.
+    """
+    multiplier = 1
+    if mode == "percentile":
+        multiplier = 100
+        mode = "quantile"
+    results = {}
+    for name in tqdm.tqdm(models):
+        results[name] = [
+            multiplier * phase_handedness_self_agreement_score(m, can_seq, mode=mode)
+            for m in models[name]
+        ]
+    return results
+
+
+def phase_handedness_self_agreement_score(m: ModelToAnalyze, can_seq, *, mode):
     """
     Returns self-agreement scores, per pair of phases.
 
