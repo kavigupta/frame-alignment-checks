@@ -51,7 +51,9 @@ def phase_handedness_self_agreement_score(m: ModelToAnalyze, can_seq, *, mode):
     A self-agreement score is how much a model agrees with itself when the 9mer phase and the donor phase are the same
         versus when they are different.
     """
-    by_phase = phase_swapping_experiment(m.model, m.cl_model_clipped, can_seq, mode=mode)
+    by_phase = phase_swapping_experiment(
+        m.model, m.cl_model_clipped, can_seq, mode=mode
+    )
     diag = np.eye(3, dtype=np.bool)
     return np.mean(by_phase[diag]) - np.mean(by_phase[~diag])
 
