@@ -5,19 +5,23 @@ import tqdm.auto as tqdm
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
+from frame_alignment_checks.stop_codon_replacement_no_undesired_changes import (
+    stop_codon_no_undesired_changes_mask,
+)
+
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .models import ModelToAnalyze
 from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
 
 
 @permacache(
-    "modular_splicing/frame_alignment/codon_stop_replacement/stop_codon_replacement_delta_accuracy_for_multiple_series",
+    "frame_alignment_checks/stop_codon_replacement/stop_codon_replacement_delta_accuracy_for_multiple_series",
     key_function=dict(models=stable_hash),
 )
 def stop_codon_replacement_delta_accuracy_for_multiple_series(
     models: Dict[str, List[ModelToAnalyze]], distance_out
 ):
-    original_seqs, acc_delta = [], {}
+    nuc_masks, acc_delta = [], {}
     for name in models:
         (
             original_seq_new,
@@ -25,17 +29,16 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
         ) = stop_codon_replacement_delta_accuracy_for_series(
             models[name], name=name, distance_out=distance_out
         )
-        original_seqs.append(original_seq_new)
-    original_seqs = np.array(original_seqs)
-    assert (original_seqs == original_seqs[0]).all()
-    o_seq = original_seqs[0]
-    return o_seq, acc_delta
+        nuc_masks.append(original_seq_new)
+    nuc_masks = np.array(nuc_masks)
+    assert (nuc_masks == nuc_masks[0]).all()
+    return nuc_masks[0], acc_delta
 
 
 def stop_codon_replacement_delta_accuracy_for_series(
     ms: List[ModelToAnalyze], *, name=None, distance_out
 ):
-    orig_seqs, deltas = [
+    nuc_masks, deltas = [
         np.array(x)
         for x in zip(
             *[
@@ -46,8 +49,8 @@ def stop_codon_replacement_delta_accuracy_for_series(
             ]
         )
     ]
-    assert (orig_seqs == orig_seqs[0]).all()
-    return orig_seqs[0], deltas
+    assert (nuc_masks == nuc_masks[0]).all()
+    return nuc_masks[0], deltas
 
 
 def stop_codon_replacement_delta_accuracy(
@@ -62,7 +65,8 @@ def stop_codon_replacement_delta_accuracy(
     :param validation_thresholds: The thresholds to use for the model (acceptor, donor)
 
     :returns: (original_seqs_all, delta_accuracies)
-        original_seqs_all: The original sequences for all exons. Shape (N, 2, L)
+        no_undesired_changes_mask: Whether or not undesired changes might be caused by the
+            substitutiton. Shape (N, 2, L, 64)
         delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
             delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
             in percentage points, when you replace the codon at distance_out from the acceptor or donor
@@ -78,9 +82,8 @@ def stop_codon_replacement_delta_accuracy(
         for x in (yps_base, yps_mut)
     ]
     yps_mut_near_exon = yps_mut[:, [0, 1], :, :, [0, 1]]
-    return original_seqs_all, 100 * (
-        yps_mut_near_exon.transpose(1, 0, 2, 3) - yps_base[:, :, None, None]
-    )
+    delta = 100 * (yps_mut_near_exon.transpose(1, 0, 2, 3) - yps_base[:, :, None, None])
+    return stop_codon_no_undesired_changes_mask(original_seqs_all), delta
 
 
 def with_all_codons(original_seq, codon_start_loc):

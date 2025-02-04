@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ..bootstrap import bootstrap
+from ..compute_stop_codons import is_stop
 from ..utils import all_3mers, boostrap_series, draw_bases
 
 
@@ -53,11 +54,18 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
 
 
 def plot_stop_codon_acc_delta_summary(
-    acc_delta, mask, distance_out, codon_masks, *, color_fn, **kwargs
+    acc_delta, mask, distance_out, *, color_fn, **kwargs
 ):
     """
     Plot the summary of the accuracy drop per codon.
     """
+    stops_mask = is_stop(all_3mers().argmax(-1))
+    codon_masks = [
+        (stops_mask == 0, "not stop", dict()),
+        ((all_3mers().argmax(-1) == [3, 0, 2]).all(-1), "TAG", dict(hatch="+++")),
+        ((all_3mers().argmax(-1) == [3, 0, 0]).all(-1), "TAA", dict(hatch="ooo")),
+        ((all_3mers().argmax(-1) == [3, 2, 0]).all(-1), "TGA", dict(hatch="///")),
+    ]
     plt.figure(dpi=400, tight_layout=True, **kwargs)
     centers_for_models = []
     centers_for_phases = []
