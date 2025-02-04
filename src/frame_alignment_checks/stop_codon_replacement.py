@@ -1,19 +1,59 @@
+from typing import Dict, List
 import numpy as np
 import tqdm.auto as tqdm
-from permacache import permacache
+from permacache import permacache, stable_hash
 from run_batched import run_batched
 
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
+from .models import ModelToAnalyze
+
+
+@permacache(
+    "modular_splicing/frame_alignment/codon_stop_replacement/stop_codon_replacement_delta_accuracy_for_multiple_series",
+    key_function=dict(models=stable_hash),
+)
+def stop_codon_replacement_delta_accuracy_for_multiple_series(
+    models: Dict[str, List[ModelToAnalyze]]
+):
+    original_seqs, acc_delta = [], {}
+    for name in models:
+        original_seq_new, acc_delta[name] = (
+            stop_codon_replacement_delta_accuracy_for_series(models[name], name)
+        )
+        original_seqs.append(original_seq_new)
+    original_seqs = np.array(original_seqs)
+    assert (original_seqs == original_seqs[0]).all()
+    o_seq = original_seqs[0]
+    return o_seq, acc_delta
+
+
+def stop_codon_replacement_delta_accuracy_for_series(
+    ms: List[ModelToAnalyze], name=None
+):
+
+    orig_seqs, deltas = [
+        np.array(x)
+        for x in zip(
+            *[
+                stop_codon_replacement_delta_accuracy(
+                    model_for_analysis=m, distance_out=40
+                )
+                for m in tqdm.tqdm(ms, desc=name)
+            ]
+        )
+    ]
+    assert (orig_seqs == orig_seqs[0]).all()
+    return orig_seqs[0], deltas
 
 
 def stop_codon_replacement_delta_accuracy(
-    *, model, model_cl, distance_out, validation_thresholds
+    *, model_for_analysis: ModelToAnalyze, distance_out
 ):
     """
     Compute the delta in accuracy when replacing codons at all 3 phases with all 64 possible codons.
 
-    :param model: The model to use
+    :param model_for_analysis: The model to use
     :param model_cl: The context length of the model
     :param distance_out: The distance from the acceptor and donor sites to mutate the codons at
     :param validation_thresholds: The thresholds to use for the model (acceptor, donor)
@@ -26,12 +66,13 @@ def stop_codon_replacement_delta_accuracy(
             (A if distance_from_which == 0, D if distance_from_which == 1) with the codon at index codon
     """
     original_seqs_all, yps_base, yps_mut = mutate_codons_experiment_all(
-        model=model,
-        model_cl=model_cl,
+        model=model_for_analysis.model,
+        model_cl=model_for_analysis.model_cl,
         distance_out=distance_out,
     )
     yps_base, yps_mut = [
-        (x > validation_thresholds).astype(np.float64) for x in (yps_base, yps_mut)
+        (x > model_for_analysis.thresholds).astype(np.float64)
+        for x in (yps_base, yps_mut)
     ]
     yps_mut_near_exon = yps_mut[:, [0, 1], :, :, [0, 1]]
     return original_seqs_all, 100 * (
