@@ -86,7 +86,6 @@ def plot_raw_real_experiment_results(
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
     mean_quantiles = er_by_model.mean_quantiles_each()
     for ax, name in zip(axs.flatten(), er_by_model.er_by_model):
-
         plot_for_masks(
             ax,
             f"{mask_overall_title} - {name}",

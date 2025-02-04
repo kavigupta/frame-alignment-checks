@@ -53,9 +53,9 @@ class RemoveStopCodons(RepairStrategy):
         codons = sequence_to_codons(sequence, self.phase_wrt_start)
         codons, meta = self.manipulate_stop_codons(codons)
         codon_sequence = codons.reshape(-1)
-        sequence[self.phase_wrt_start : self.phase_wrt_start + len(codon_sequence)] = (
-            np.eye(4)[codon_sequence]
-        )
+        sequence[
+            self.phase_wrt_start : self.phase_wrt_start + len(codon_sequence)
+        ] = np.eye(4)[codon_sequence]
         return sequence, meta
 
 

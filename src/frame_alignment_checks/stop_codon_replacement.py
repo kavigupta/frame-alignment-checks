@@ -1,12 +1,13 @@
 from typing import Dict, List
+
 import numpy as np
 import tqdm.auto as tqdm
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
-from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
 from .models import ModelToAnalyze
+from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
 
 
 @permacache(
@@ -14,12 +15,15 @@ from .models import ModelToAnalyze
     key_function=dict(models=stable_hash),
 )
 def stop_codon_replacement_delta_accuracy_for_multiple_series(
-    models: Dict[str, List[ModelToAnalyze]]
+    models: Dict[str, List[ModelToAnalyze]], distance_out
 ):
     original_seqs, acc_delta = [], {}
     for name in models:
-        original_seq_new, acc_delta[name] = (
-            stop_codon_replacement_delta_accuracy_for_series(models[name], name)
+        (
+            original_seq_new,
+            acc_delta[name],
+        ) = stop_codon_replacement_delta_accuracy_for_series(
+            models[name], name=name, distance_out=distance_out
         )
         original_seqs.append(original_seq_new)
     original_seqs = np.array(original_seqs)
@@ -29,15 +33,14 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
 
 
 def stop_codon_replacement_delta_accuracy_for_series(
-    ms: List[ModelToAnalyze], name=None
+    ms: List[ModelToAnalyze], *, name=None, distance_out
 ):
-
     orig_seqs, deltas = [
         np.array(x)
         for x in zip(
             *[
                 stop_codon_replacement_delta_accuracy(
-                    model_for_analysis=m, distance_out=40
+                    model_for_analysis=m, distance_out=distance_out
                 )
                 for m in tqdm.tqdm(ms, desc=name)
             ]
