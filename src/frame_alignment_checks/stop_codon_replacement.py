@@ -65,7 +65,8 @@ def stop_codon_replacement_delta_accuracy(
     :param validation_thresholds: The thresholds to use for the model (acceptor, donor)
 
     :returns: (original_seqs_all, delta_accuracies)
-        no_undesired_changes_mask: Whether or not undesired changes might be caused by the substitutiton. Shape (N, 2, L, 64)
+        no_undesired_changes_mask: Whether or not undesired changes might be caused by the
+            substitutiton. Shape (N, 2, L, 64)
         delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
             delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
             in percentage points, when you replace the codon at distance_out from the acceptor or donor
