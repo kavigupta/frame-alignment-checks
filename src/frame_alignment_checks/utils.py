@@ -80,7 +80,7 @@ def extract_center(model, xs):
     return yps
 
 
-def boostrap_series(ys):
+def bootstrap_series(ys):
     bootstrap = ys[np.random.RandomState(0).choice(len(ys), size=(len(ys), 10_000))]
     bootstrap = bootstrap.mean(0)
     lo, hi = np.percentile(bootstrap, [2.5, 97.5], axis=0)
