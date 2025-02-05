@@ -129,9 +129,13 @@ def permutation_test(xs, ys, count=10**4):
     return (bad + 1) / (results.shape[1] + 1)
 
 
-def parse_sequence_as_one_hot(nt_sequence: str):
+def parse_sequence_as_one_hot(nt_sequence: str) -> np.ndarray:
     """
-    Parse a string genomic sequence as one hot encoding.
+    Parse a string genomic sequence as one hot encoding. The sequence should only contain A, C, G, T, and N.
+
+    :param nt_sequence: The nucleotide sequence to parse.
+    :returns: The one hot encoding of the sequence, with shape (len(nt_sequence), 4). One hot encoding is
+        in the order A, C, G, T, with N being all zeros.
     """
     table = np.concatenate(
         [np.eye(4, dtype=np.uint8), np.zeros((1, 4), dtype=np.uint8)]
