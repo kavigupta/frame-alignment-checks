@@ -1,7 +1,7 @@
 import numpy as np
 from frozendict import frozendict
 
-from frame_alignment_checks.utils import permutation_test
+from ..utils import permutation_test
 
 
 def plot_multi_seed_experiment(

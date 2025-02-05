@@ -5,9 +5,8 @@ import tqdm.auto as tqdm
 from permacache import permacache
 from run_batched import run_batched
 
-from frame_alignment_checks.models import ModelToAnalyze
-
 from ..data.load import load_non_stop_donor_windows
+from ..models import ModelToAnalyze
 from ..utils import all_seqs, extract_center, stable_hash_cached
 
 histogram_min_value = -20

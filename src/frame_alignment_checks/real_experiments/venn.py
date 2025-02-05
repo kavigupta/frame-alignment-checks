@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib_venn import venn3
 
-from frame_alignment_checks.real_experiments.saturation_mutagenesis import (
+from .saturation_mutagenesis import (
     SEQUENCE_PADDING_LEFT,
     SEQUENCE_PADDING_RIGHT,
     load_mutagenesis_table,
