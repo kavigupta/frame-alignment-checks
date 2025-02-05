@@ -20,7 +20,7 @@ def line_color(i: int) -> str:
     return modify_color(THEME_COLORS[i], 0.5, 0.9)
 
 
-def bar_color(i):
+def bar_color(i: int) -> str:
     """
     Compute a color for the i-th bar in a plot. Only works for up to 6 bars.
     Somewhat lighter than the line color.
