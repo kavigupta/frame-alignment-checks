@@ -11,7 +11,7 @@ from .coding_exon import CodingExon
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .deletion_repair import repair_strategy_types
 from .models import ModelToAnalyze
-from .utils import collect_windows, extract_center, stable_hash_cached
+from .utils import collect_windows, device_of, extract_center, stable_hash_cached
 
 basic_deletion_experiment_locations = [
     "left of A",
@@ -315,7 +315,7 @@ def deletion_experiment(
         metas.append(meta)
     x_windows = np.concatenate(x_windows)
     if model is not None:
-        yps = run_batched(lambda x: extract_center(model, x), x_windows, 128)
+        yps = run_batched(lambda x: extract_center(model, x), x_windows, 128, device=device_of(model))
     else:
         yps = np.empty((len(x_windows), 4))
         yps[:] = np.nan

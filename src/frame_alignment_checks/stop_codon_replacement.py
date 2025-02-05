@@ -10,7 +10,7 @@ from .models import ModelToAnalyze
 from .stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
-from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached
+from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached, device_of
 
 
 @permacache(
@@ -155,7 +155,12 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     assert wmc_windows_flat.shape[2:] == (model_cl + 1, 4)
     wmc_windows_flat = wmc_windows_flat.reshape((-1, model_cl + 1, 4))
 
-    out = run_batched(lambda x: extract_center(model, x), wmc_windows_flat, 128)
+    out = run_batched(
+        lambda x: extract_center(model, x),
+        wmc_windows_flat,
+        128,
+        device=device_of(model),
+    )
     out = out.reshape(inital_shape + (3,))
 
     # A and D

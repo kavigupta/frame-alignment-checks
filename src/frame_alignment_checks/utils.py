@@ -3,6 +3,8 @@ from typing import Dict, Tuple
 
 import numpy as np
 from permacache import stable_hash
+import torch
+from torch import nn
 
 
 def all_seqs(n, *, amount=4):
@@ -153,3 +155,10 @@ def parse_sequence_as_one_hot(nt_sequence: str) -> np.ndarray:
         [np.eye(4, dtype=np.uint8), np.zeros((1, 4), dtype=np.uint8)]
     )
     return table[["ACGTN".index(nt) for nt in nt_sequence]]
+
+
+def device_of(m: nn.Module) -> torch.device:
+    """
+    Get the device of a module.
+    """
+    return next(m.parameters()).device
