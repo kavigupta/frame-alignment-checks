@@ -21,6 +21,7 @@ from .deletion import (
 )
 from .deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .models import ModelToAnalyze
+from .plotting import deletion_plotting
 from .plotting.codon_stop import (
     plot_stop_codon_acc_delta_per_codon,
     plot_stop_codon_acc_delta_summary,
