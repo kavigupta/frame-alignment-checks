@@ -18,7 +18,7 @@ class ModelToAnalyze:
 
 
 @permacache(
-    "frame_alignment_checks/models/calibration_thresholds",
+    "frame_alignment_checks/models/calibration_thresholds_2",
     key_function=dict(m=stable_hash_cached),
 )
 def calibration_thresholds(m, limit=None):

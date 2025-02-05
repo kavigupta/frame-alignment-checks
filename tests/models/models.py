@@ -7,6 +7,10 @@ from .lssi import load_with_remapping_pickle
 
 cl_models = 100
 
+def clip(yp):
+    return yp[:, cl_models // 2 : -(cl_models // 2)]
+
+
 
 class SpliceModel(torch.nn.Module):
     def __init__(self):
@@ -25,12 +29,15 @@ class SpliceModel(torch.nn.Module):
             m.conv_layers[0].clipping = "none"
 
     def forward(self, x):
+        yp = self.compute_without_cl(x)
+        return clip(yp)
+
+    def compute_without_cl(self, x):
         acceptor = self.acceptor(x).log_softmax(-1)[:, :, [1]]
         donor = self.donor(x).log_softmax(-1)[..., [2]]
-        null = 1 - torch.exp(acceptor) - torch.exp(donor)
-        return torch.cat([null, acceptor, donor], dim=-1)[
-            :, cl_models // 2 : -(cl_models // 2)
-        ]
+        null = torch.log(1 - torch.exp(acceptor) - torch.exp(donor))
+        yp = torch.cat([null, acceptor, donor], dim=-1)
+        return yp
 
 
 def lssi_model():
