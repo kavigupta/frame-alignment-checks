@@ -7,7 +7,7 @@ from dconstruct import construct
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
-from frame_alignment_checks.models import ModelToAnalyze
+from .models import ModelToAnalyze
 
 from .coding_exon import CodingExon
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene

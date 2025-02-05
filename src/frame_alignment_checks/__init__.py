@@ -1,11 +1,11 @@
-from frame_alignment_checks.phase_handedness.compute_self_agreement import (
+from .phase_handedness.compute_self_agreement import (
     phase_handedness_self_agreement_score,
     phase_handedness_self_agreement_score_for_multiple_series,
 )
-from frame_alignment_checks.real_experiments.plot_summary import (
+from .real_experiments.plot_summary import (
     plot_real_experiment_summary,
 )
-from frame_alignment_checks.statistics.handedness_logos import (
+from .statistics.handedness_logos import (
     phase_handedness_plot_relative_logos,
     phase_handedness_print_statistics_by_phase,
 )

@@ -5,7 +5,7 @@ import tqdm.auto as tqdm
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
-from frame_alignment_checks.stop_codon_replacement_no_undesired_changes import (
+from .stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
 

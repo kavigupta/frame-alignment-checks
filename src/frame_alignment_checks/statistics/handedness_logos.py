@@ -1,12 +1,12 @@
 from render_psam import render_psams
 
-from frame_alignment_checks.data.load import load_train_counts_by_phase
-from frame_alignment_checks.phase_handedness.best_5mers_each import (
+from ..data.load import load_train_counts_by_phase
+from ..phase_handedness.best_5mers_each import (
     get_phase_specific_9mers,
 )
-from frame_alignment_checks.phase_handedness.compute_self_agreement import all_9mers
-from frame_alignment_checks.plotting.colors import line_color
-from frame_alignment_checks.utils import draw_bases
+from ..phase_handedness.compute_self_agreement import all_9mers
+from ..plotting.colors import line_color
+from ..utils import draw_bases
 
 
 def relative_logos_by_phase():

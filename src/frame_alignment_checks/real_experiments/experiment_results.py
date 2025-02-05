@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from frame_alignment_checks.real_experiments.math import mean_quantile
+from .math import mean_quantile
 
 
 @dataclass
