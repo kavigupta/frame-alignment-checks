@@ -87,7 +87,7 @@ def bootstrap_series(ys: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
     This is done deterministically with a fixed random seed.
 
-    :param ys: The series to compute the confidence interval for. Shape: (T, N) where T is the number of
+    :param ys: The series to compute the confidence interval for. Shape: (N, T) where T is the number of
         time points and N is the number of samples at each point.
     :returns:
         lo: The lower bound of the confidence interval at each time point. Shape: (T,).
