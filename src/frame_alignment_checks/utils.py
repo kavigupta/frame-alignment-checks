@@ -80,7 +80,19 @@ def extract_center(model, xs):
     return yps
 
 
-def bootstrap_series(ys):
+def bootstrap_series(ys: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute a 95% confidence interval for the mean of the given series at each point, using a bootstrap.
+    Boostraps are done at each time point independently.
+
+    This is done deterministically with a fixed random seed.
+
+    :param ys: The series to compute the confidence interval for. Shape: (T, N) where T is the number of
+        time points and N is the number of samples at each point.
+    :returns:
+        lo: The lower bound of the confidence interval at each time point. Shape: (T,).
+        hi: The upper bound of the confidence interval at each time point. Shape: (T,).
+    """
     bootstrap = ys[np.random.RandomState(0).choice(len(ys), size=(len(ys), 10_000))]
     bootstrap = bootstrap.mean(0)
     lo, hi = np.percentile(bootstrap, [2.5, 97.5], axis=0)
