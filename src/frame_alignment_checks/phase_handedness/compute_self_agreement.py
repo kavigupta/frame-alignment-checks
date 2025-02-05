@@ -7,7 +7,7 @@ from run_batched import run_batched
 
 from ..data.load import load_non_stop_donor_windows
 from ..models import ModelToAnalyze
-from ..utils import all_seqs, extract_center, stable_hash_cached
+from ..utils import all_seqs, device_of, extract_center, stable_hash_cached
 
 histogram_min_value = -20
 histogram_resolution = 0.001
@@ -96,9 +96,13 @@ def compute_donor_scores(m, cl_model, donor_9mer):
     if donor_9mer is not None:
         data[:, cl_model // 2 - 2 : cl_model // 2 + 7] = donor_9mer
     data = np.eye(4, dtype=np.float32)[data] * (data >= 0)[..., None]
-    result = run_batched(lambda x: extract_center(m, x), data, 128, pbar=tqdm.tqdm)[
-        :, 2
-    ]
+    result = run_batched(
+        lambda x: extract_center(m, x),
+        data,
+        128,
+        pbar=tqdm.tqdm,
+        device=device_of(m),
+    )[:, 2]
     return result
 
 
