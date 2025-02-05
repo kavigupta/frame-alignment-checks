@@ -10,11 +10,24 @@ THEME_COLORS = [
 ]
 
 
-def line_color(i):
+def line_color(i: int) -> str:
+    """
+    Compute a color for the i-th line in a plot. Only works for up to 6 lines.
+
+    :param i: The index of the line.
+    :returns: The color for the line.
+    """
     return modify_color(THEME_COLORS[i], 0.5, 0.9)
 
 
-def bar_color(i):
+def bar_color(i: int) -> str:
+    """
+    Compute a color for the i-th bar in a plot. Only works for up to 6 bars.
+    Somewhat lighter than the line color.
+
+    :param i: The index of the bar.
+    :returns: The color for the bar.
+    """
     return modify_color(THEME_COLORS[i], 1.0, 1.0)
 
 
