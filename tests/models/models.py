@@ -7,9 +7,9 @@ from .lssi import load_with_remapping_pickle
 
 cl_models = 100
 
+
 def clip(yp):
     return yp[:, cl_models // 2 : -(cl_models // 2)]
-
 
 
 class SpliceModel(torch.nn.Module):
