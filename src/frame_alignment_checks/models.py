@@ -44,6 +44,7 @@ def calibration_thresholds(m, limit=None):
     y_all = []
     yp_all = []
     for gene_idx in tqdm.tqdm(gene_idxs[:limit]):
+        # pylint: disable=unsubscriptable-object
         x, y = load_validation_gene(gene_idx)
         with torch.no_grad():
             [yp] = m(torch.tensor(x[None])).softmax(-1)[..., 1:].numpy()
