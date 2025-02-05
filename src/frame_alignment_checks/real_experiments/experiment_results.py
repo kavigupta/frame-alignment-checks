@@ -7,7 +7,7 @@ from .math import mean_quantile
 
 
 @dataclass
-class ExperimentResult:
+class RealExperimentResultForModel:
     actual: np.ndarray  # (N,) floats
     predicteds: List[np.ndarray]  # (S, N) floats
 
@@ -21,8 +21,8 @@ class ExperimentResult:
 
 
 @dataclass
-class ExperimentResultByModel:
-    er_by_model: Dict[str, ExperimentResult]
+class FullRealExperimentResult:
+    er_by_model: Dict[str, RealExperimentResultForModel]
     masks_each: List[Tuple[str, np.ndarray]]
 
     def mean_quantiles_each(self):
@@ -32,13 +32,13 @@ class ExperimentResultByModel:
         }
 
     def filter_models(self, func):
-        return ExperimentResultByModel(
+        return FullRealExperimentResult(
             {name: er for name, er in self.er_by_model.items() if func(name)},
             self.masks_each,
         )
 
     def map_model_keys(self, func):
-        return ExperimentResultByModel(
+        return FullRealExperimentResult(
             {func(name): er for name, er in self.er_by_model.items()},
             self.masks_each,
         )

@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 
 from ..plotting.colors import line_color
-from .experiment_results import ExperimentResultByModel
+from .experiment_results import FullRealExperimentResult
 
 
 def compute_binned_predictor(actual, predicted):
@@ -79,7 +79,7 @@ def plot_for_masks(
 def plot_raw_real_experiment_results(
     mask_overall_title,
     *,
-    er_by_model: ExperimentResultByModel,
+    er_by_model: FullRealExperimentResult,
     xlabel,
     axs,
 ):
