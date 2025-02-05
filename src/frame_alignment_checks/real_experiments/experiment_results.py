@@ -37,6 +37,12 @@ class ExperimentResultByModel:
             self.masks_each,
         )
 
+    def map_model_keys(self, func):
+        return ExperimentResultByModel(
+            {func(name): er for name, er in self.er_by_model.items()},
+            self.masks_each,
+        )
+
     @classmethod
     def merge(cls, er_by_models):
         er_by_model = {}

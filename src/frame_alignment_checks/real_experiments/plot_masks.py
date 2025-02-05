@@ -2,6 +2,7 @@ import itertools
 
 import numpy as np
 
+from ..plotting.colors import line_color
 from .experiment_results import ExperimentResultByModel
 
 
@@ -81,7 +82,6 @@ def plot_raw_real_experiment_results(
     er_by_model: ExperimentResultByModel,
     xlabel,
     axs,
-    color_for_idx,
 ):
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
     mean_quantiles = er_by_model.mean_quantiles_each()
@@ -93,5 +93,5 @@ def plot_raw_real_experiment_results(
             er_by_model.er_by_model[name],
             er_by_model.masks_each,
             mean_quantile_by_mask=mean_quantiles[name][0],
-            color_for_idx=color_for_idx,
+            color_for_idx=line_color,
         )
