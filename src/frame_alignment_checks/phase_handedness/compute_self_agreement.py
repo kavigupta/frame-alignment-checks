@@ -7,7 +7,7 @@ from run_batched import run_batched
 
 from ..data.load import load_non_stop_donor_windows
 from ..models import ModelToAnalyze
-from ..utils import all_seqs, extract_center, stable_hash_cached, device_of
+from ..utils import all_seqs, device_of, extract_center, stable_hash_cached
 
 histogram_min_value = -20
 histogram_resolution = 0.001

@@ -315,7 +315,9 @@ def deletion_experiment(
         metas.append(meta)
     x_windows = np.concatenate(x_windows)
     if model is not None:
-        yps = run_batched(lambda x: extract_center(model, x), x_windows, 128, device=device_of(model))
+        yps = run_batched(
+            lambda x: extract_center(model, x), x_windows, 128, device=device_of(model)
+        )
     else:
         yps = np.empty((len(x_windows), 4))
         yps[:] = np.nan

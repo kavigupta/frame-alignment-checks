@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
 import numpy as np
-from permacache import permacache
 import torch
 import tqdm.auto as tqdm
+from permacache import permacache
 
-from .utils import stable_hash_cached
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
+from .utils import stable_hash_cached
 
 
 @dataclass

@@ -5,7 +5,7 @@ from run_batched import run_batched
 
 from ..compute_stop_codons import all_frames_closed
 from ..data.load import load_minigene, load_saturation_mutagenesis_table
-from ..utils import extract_center, parse_sequence_as_one_hot, device_of
+from ..utils import device_of, extract_center, parse_sequence_as_one_hot
 from .experiment_results import FullRealExperimentResult, RealExperimentResultForModel
 
 SEQUENCE_PADDING_LEFT = 23

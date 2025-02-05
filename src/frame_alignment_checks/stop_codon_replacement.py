@@ -10,7 +10,13 @@ from .models import ModelToAnalyze
 from .stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
-from .utils import all_3mers, collect_windows, extract_center, stable_hash_cached, device_of
+from .utils import (
+    all_3mers,
+    collect_windows,
+    device_of,
+    extract_center,
+    stable_hash_cached,
+)
 
 
 @permacache(
