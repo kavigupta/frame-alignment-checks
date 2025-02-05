@@ -35,26 +35,7 @@ class SpliceModel(torch.nn.Module):
         ]
 
 
-from frame_alignment_checks.data.load import (
-    load_long_canonical_internal_coding_exons,
-    load_validation_gene,
-)
-
-
-def main():
-    exon = load_long_canonical_internal_coding_exons()[0]
-
-    x, y = load_validation_gene(exon.gene_idx)
-    print(x.shape, y.shape)
-
+def lssi_model():
     m = SpliceModel().eval()
     thresholds = calibration_thresholds(m)
-
-    res = accuracy_delta_given_deletion_experiment(
-        ModelToAnalyze(m, cl_models, cl_models, thresholds), distance_out=40
-    )
-
-    import IPython; IPython.embed()
-
-
-main()
+    return ModelToAnalyze(m, cl_models, cl_models, thresholds)
