@@ -7,11 +7,10 @@ from dconstruct import construct
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
-from .models import ModelToAnalyze
-
 from .coding_exon import CodingExon
 from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
 from .deletion_repair import repair_strategy_types
+from .models import ModelToAnalyze
 from .utils import collect_windows, extract_center, stable_hash_cached
 
 basic_deletion_experiment_locations = [
