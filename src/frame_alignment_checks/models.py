@@ -41,8 +41,6 @@ def calibration_thresholds(m, limit=None):
     gene_idxs = sorted(
         {exon.gene_idx for exon in load_long_canonical_internal_coding_exons()}
     )
-    print(len(gene_idxs))
-    print(gene_idxs)
     y_all = []
     yp_all = []
     for gene_idx in tqdm.tqdm(gene_idxs[:limit]):
