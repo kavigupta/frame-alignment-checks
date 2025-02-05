@@ -4,7 +4,7 @@ import numpy as np
 from ..bootstrap import bootstrap
 from ..compute_stop_codons import is_stop
 from ..plotting.colors import bar_color, line_color
-from ..utils import all_3mers, boostrap_series, draw_bases
+from ..utils import all_3mers, bootstrap_series, draw_bases
 
 
 def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
@@ -17,7 +17,7 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
     """
     drawn, series = compute_series(acc_delta, mask)
     series_mean = series.mean(0)
-    lo, hi = boostrap_series(series)
+    lo, hi = bootstrap_series(series)
     mean_errorbar = (hi + lo) / 2
     errorbar = (hi - lo) / 2
     gap = 0.5
