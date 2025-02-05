@@ -6,7 +6,7 @@ from ..deletion import (
     basic_deletion_experiment_locations,
 )
 from ..deletion_num_stops import num_open_reading_frames
-from ..utils import boostrap_series
+from ..utils import bootstrap_series
 from .colors import bar_color, line_color
 
 
@@ -78,7 +78,7 @@ def plot_deletion_effect(deltas_by_model, distance_out):
                     marker=".",
                     linestyle=["-", "--"][j],
                 )
-                lo, hi = boostrap_series(ys)
+                lo, hi = bootstrap_series(ys)
                 ax.fill_between(xs, lo, hi, alpha=0.5, color=bar_color(i))
         ax.axhline(0, color="black")
         ax.set_xticks([3, 6, 9])
@@ -123,7 +123,7 @@ def plot_deletion_effect_by_whether_stop_codon(
                 marker="*",
                 label=condition,
             )
-            lo, hi = boostrap_series(frac)
+            lo, hi = bootstrap_series(frac)
             ax.fill_between(xs, lo, hi, alpha=0.5, color=bar_color(color_idx))
         ax.axhline(0, color="black")
         ax.set_xticks([3, 6, 9])
