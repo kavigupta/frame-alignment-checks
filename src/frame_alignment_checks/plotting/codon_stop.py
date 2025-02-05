@@ -4,9 +4,9 @@ import numpy as np
 from ..bootstrap import bootstrap
 from ..compute_stop_codons import is_stop
 from ..utils import all_3mers, boostrap_series, draw_bases
+from ..plotting.colors import bar_color, line_color
 
-
-def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
+def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
     """
     Plot the accuracy drop per codon, with the option to plot ranges of stop codons
     and codons that are close to stop codons.
@@ -30,14 +30,14 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
             xs,
             series_mean[phase + 1],
             label=f"Phase: {phase}",
-            color=color_fn(phase + 1),
+            color=line_color(phase + 1),
             marker="_",
         )
         ax.errorbar(
             xs,
             mean_errorbar[phase + 1],
             yerr=errorbar[phase + 1],
-            color=color_fn(phase + 1),
+            color=line_color(phase + 1),
             linestyle="None",
         )
     ax.set_xticks(xs, drawn, rotation=90)
@@ -54,7 +54,7 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None, color_fn):
 
 
 def plot_stop_codon_acc_delta_summary(
-    acc_delta, mask, distance_out, *, color_fn, **kwargs
+    acc_delta, mask, distance_out, **kwargs
 ):
     """
     Plot the summary of the accuracy drop per codon.
@@ -90,7 +90,7 @@ def plot_stop_codon_acc_delta_summary(
                 plt.bar(
                     [x],
                     mean_by_model.mean(),
-                    color=color_fn(idx),
+                    color=bar_color(idx),
                     width=1 / len(codon_masks) * width,
                     label=label if i == 0 and phase == 0 else None,
                 )

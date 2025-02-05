@@ -5,6 +5,7 @@ from frame_alignment_checks.phase_handedness.best_5mers_each import (
     get_phase_specific_9mers,
 )
 from frame_alignment_checks.phase_handedness.compute_self_agreement import all_9mers
+from frame_alignment_checks.plotting.colors import line_color
 from frame_alignment_checks.utils import draw_bases
 
 
@@ -30,6 +31,12 @@ def phase_handedness_plot_relative_logos(**kwargs):
         names=[""] * 3,
         axes_mode="just_y",
         figure_kwargs=dict(dpi=400),
+        color_scheme={
+            "A": line_color(2),
+            "C": line_color(0),
+            "G": line_color(1),
+            "T": line_color(3),
+        },
         **kwargs,
     )
 
