@@ -6,7 +6,7 @@ from run_batched import run_batched
 from ..compute_stop_codons import all_frames_closed
 from ..data.load import load_minigene, load_saturation_mutagenesis_table
 from ..utils import extract_center, parse_sequence_as_one_hot
-from .experiment_results import ExperimentResult, ExperimentResultByModel
+from .experiment_results import RealExperimentResultForModel, FullRealExperimentResult
 
 SEQUENCE_PADDING_LEFT = 23
 SEQUENCE_PADDING_RIGHT = 16
@@ -156,12 +156,12 @@ def saturation_mutagenesis_experiment(mod):
     res = run_on_saturation_mutagenesis_data_all(ms, mod.needed_context_model).mean(1)
     actual = np.array(data.LEI)
     predicted = np.array(np.log2(res))
-    return ExperimentResult(actual, predicted)
+    return RealExperimentResultForModel(actual, predicted)
 
 
 def saturation_mutagenesis_experiment_all(models):
     reading_frames_closed = mutagenesis_sequence_reading_frame_closed()
-    return ExperimentResultByModel(
+    return FullRealExperimentResult(
         {mod.name: saturation_mutagenesis_experiment(mod) for mod in models},
         [
             (~reading_frames_closed, "open reading frame"),
