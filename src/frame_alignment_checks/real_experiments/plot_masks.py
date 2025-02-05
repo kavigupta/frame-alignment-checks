@@ -2,8 +2,8 @@ import itertools
 
 import numpy as np
 
-from .experiment_results import ExperimentResultByModel
 from ..plotting.colors import line_color
+from .experiment_results import ExperimentResultByModel
 
 
 def compute_binned_predictor(actual, predicted):
