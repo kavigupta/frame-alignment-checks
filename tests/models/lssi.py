@@ -1,3 +1,4 @@
+# pylint: disable=all
 """
 Loads the LSSI models. Minimal amount of code necessary to do this. Largely sourced from the SAM repository, specifically
 

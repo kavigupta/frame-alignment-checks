@@ -1,9 +1,6 @@
 import torch
 
-from frame_alignment_checks import (
-    ModelToAnalyze,
-    accuracy_delta_given_deletion_experiment,
-)
+from frame_alignment_checks import ModelToAnalyze
 from frame_alignment_checks.models import calibration_thresholds
 
 from .lssi import load_with_remapping_pickle
