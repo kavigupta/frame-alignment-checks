@@ -42,3 +42,5 @@ from .stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
 from .utils import display_permutation_test_p_values
+
+from .plotting import deletion_plotting
