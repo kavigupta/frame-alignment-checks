@@ -21,7 +21,7 @@ class ModelToAnalyze:
     "frame_alignment_checks/models/calibration_thresholds_2",
     key_function=dict(m=stable_hash_cached),
 )
-def calibration_thresholds(m, limit=None):
+def calibration_accuracy_and_thresholds(m, mcl, *, limit=None):
     """
     Compute calibration thresholds on the genes in the validation set. This is used internally
     for testing, and can be used by a user as well; though we recommend using a larger set of
@@ -46,12 +46,15 @@ def calibration_thresholds(m, limit=None):
     for gene_idx in tqdm.tqdm(gene_idxs[:limit]):
         # pylint: disable=unsubscriptable-object
         x, y = load_validation_gene(gene_idx)
+        x = np.pad(x, ((mcl // 2, mcl // 2), (0, 0)))
         with torch.no_grad():
             [yp] = m(torch.tensor(x[None])).softmax(-1)[..., 1:].numpy()
-        y_all.append(y)
+        y_all.append(y[:, 1:])
         yp_all.append(yp)
     yp_all = np.concatenate(yp_all)
     y_all = np.concatenate(y_all)
-    frac_actual = y_all.mean(0)[1:]
+    assert yp_all.shape == y_all.shape
+    frac_actual = y_all.mean(0)
     thresholds = [np.quantile(yp_all[:, c], 1 - frac_actual[c]) for c in range(2)]
-    return np.array(thresholds)
+    acc = ((yp_all > thresholds) & (y_all > 0.5)).sum(0) / (y_all > 0.5).sum(0)
+    return acc, np.array(thresholds)
