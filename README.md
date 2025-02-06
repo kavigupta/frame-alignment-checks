@@ -45,6 +45,10 @@ This is a collection of donors from the SpliceAI test set (again via SAM), speci
 with an arbitrary sequence would not introduce a stop in the exon. Basically, we exclude conditions where the
 flanking exon ends with a sequence that is a prefix of a stop codon, these are T, TA, and TG.
 
+### Acceptor and donor LSSI models
+
+These are models trained on the SpliceAI training set, via SAM. Copied directly from [https://github.com/kavigupta/sam/tree/main/spliceai/Canonical/splicepoint-models](here). We only use
+these in tests, and they are not required for the package to run.
 
 [1]: Jaganathan, Kishore, et al. "Predicting splicing from primary sequence with deep learning." Cell 176.3 (2019): 535-548.
 [2]: https://github.com/kavigupta/sam
