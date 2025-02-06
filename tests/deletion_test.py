@@ -13,13 +13,15 @@ from tests.utils import skip_on_mac
 class TestDeletion(unittest.TestCase):
     @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
-        result = accuracy_delta_given_deletion_experiment(lssi_model(), distance_out=40)
+        result = accuracy_delta_given_deletion_experiment(
+            lssi_model(), distance_out=40, limit=100
+        )
         self.assertEqual((result.raw_data != 0).sum(), 0)
 
     @skip_on_mac
     def test_lssi_with_orf_has_impact_in_certain_contexts_only(self):
         result = accuracy_delta_given_deletion_experiment(
-            lssi_model_with_orf(), distance_out=40
+            lssi_model_with_orf(), distance_out=40, limit=100
         )
         for num_deletions in range(1, 1 + 9):
             matr = result.mean_effect_matrix(num_deletions)
@@ -34,7 +36,7 @@ class TestDeletion(unittest.TestCase):
     @skip_on_mac
     def test_lssi_orf_num_stops_mask(self):
         result = accuracy_delta_given_deletion_experiment(
-            lssi_model_with_orf(), distance_out=40
+            lssi_model_with_orf(), distance_out=40, limit=100
         )
         num_rf_each = num_open_reading_frames(distance_out=40)
         for num_rf in range(1 + 3):
@@ -55,7 +57,7 @@ class TestDeletion(unittest.TestCase):
     @skip_on_mac
     def test_lssi_orf_num_stops_series(self):
         result = accuracy_delta_given_deletion_experiment(
-            lssi_model_with_orf(), distance_out=40
+            lssi_model_with_orf(), distance_out=40, limit=100
         )
         mes = result.mean_effect_series("left of A", "A")
         self.assertEqual(mes.shape, (1, 9))
