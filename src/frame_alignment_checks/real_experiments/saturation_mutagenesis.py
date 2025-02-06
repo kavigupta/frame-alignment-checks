@@ -4,7 +4,7 @@ from permacache import permacache, stable_hash
 from run_batched import run_batched
 
 from ..compute_stop_codons import all_frames_closed
-from ..data.load import load_minigene, load_saturation_mutagenesis_table
+from ..load_data import load_minigene, load_saturation_mutagenesis_table
 from ..utils import device_of, extract_center, parse_sequence_as_one_hot
 from .experiment_results import FullRealExperimentResult, RealExperimentResultForModel
 

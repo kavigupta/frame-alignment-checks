@@ -17,7 +17,7 @@ class CodingExon:
     @property
     def text(self):
         # pylint: disable=cyclic-import,no-member
-        from .data.load import load_validation_gene
+        from .load_data import load_validation_gene
 
         x, _ = load_validation_gene(self.gene_idx)
         return x.argmax(-1)[self.acceptor : self.donor + 1]

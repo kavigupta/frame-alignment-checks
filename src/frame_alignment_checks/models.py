@@ -5,7 +5,7 @@ import torch
 import tqdm.auto as tqdm
 from permacache import permacache
 
-from .data.load import load_long_canonical_internal_coding_exons, load_validation_gene
+from .load_data import load_long_canonical_internal_coding_exons, load_validation_gene
 from .utils import stable_hash_cached
 
 

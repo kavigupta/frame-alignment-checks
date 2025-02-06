@@ -1,6 +1,6 @@
 import numpy as np
 
-from .data.load import load_long_canonical_internal_coding_exons
+from .load_data import load_long_canonical_internal_coding_exons
 from .deletion import accuracy_given_deletion_experiment
 from .models import ModelToAnalyze
 
