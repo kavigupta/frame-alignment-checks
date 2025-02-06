@@ -46,7 +46,7 @@ def is_stop(codons):
     TAA = [3, 0, 0]
     TGA = [3, 2, 0]
     stops = TAG, TAA, TGA
-    return np.any([(codons == stop).all(-1) for stop in stops], axis=0)
+    return np.any([(codons == np.array(stop)).all(-1) for stop in stops], axis=0)
 
 
 def all_frames_closed(exon_sequences):
