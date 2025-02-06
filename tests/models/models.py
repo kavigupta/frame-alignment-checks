@@ -5,15 +5,10 @@ from frame_alignment_checks.models import calibration_accuracy_and_thresholds
 
 from .lssi import load_with_remapping_pickle
 
-cl_models = 100
-
-
-def clip(yp):
-    return yp[:, cl_models // 2 : -(cl_models // 2)]
-
 
 class SpliceModel(torch.nn.Module):
-    def __init__(self):
+
+    def __init__(self, cl_model):
         super().__init__()
         self.acceptor = load_with_remapping_pickle(
             "tests/data/acceptor.m",
@@ -27,10 +22,11 @@ class SpliceModel(torch.nn.Module):
         )
         for m in [self.acceptor, self.donor]:
             m.conv_layers[0].clipping = "none"
+        self.cl_model = cl_model
 
     def forward(self, x):
         yp = self.compute_without_cl(x)
-        return clip(yp)
+        return self.clip(yp)
 
     def compute_without_cl(self, x):
         acceptor = self.acceptor(x).log_softmax(-1)[..., [1]]
@@ -39,12 +35,16 @@ class SpliceModel(torch.nn.Module):
         yp = torch.cat([null, acceptor, donor], dim=-1)
         return yp
 
+    def clip(self, yp):
+        return yp[:, self.cl_model // 2 : -(self.cl_model // 2)]
+
 
 def calibrated_model(m):
     m = m.eval()
-    _, thresholds = calibration_accuracy_and_thresholds(m, cl_models)
-    return ModelToAnalyze(m, cl_models, cl_models, thresholds)
+    acc, thresholds = calibration_accuracy_and_thresholds(m, m.cl_model)
+    print(acc, thresholds)
+    return ModelToAnalyze(m, m.cl_model, m.cl_model, thresholds)
 
 
 def lssi_model():
-    return calibrated_model(SpliceModel())
+    return calibrated_model(SpliceModel(cl_model=100))
