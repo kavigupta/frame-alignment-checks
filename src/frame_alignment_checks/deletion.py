@@ -185,15 +185,12 @@ def accuracy_delta_given_deletion_experiment(
     yps_base, _, _ = accuracy_given_deletion_experiment(
         mod_for_base, repair_spec, distance_out=distance_out
     )
-    # import IPython; IPython.embed()
-    print(mod_for_base)
     if binary_metric:
         thresh_dada = mod.thresholds[[1, 0, 1, 0]]
         thresh_base_dada = mod_for_base.thresholds[[1, 0, 1, 0]]
         yps_deletions = (yps_deletions > thresh_dada).astype(np.float64)
         yps_base = (yps_base > thresh_base_dada).astype(np.float64)
     delta = yps_deletions - yps_base[:, None, None, :]
-    print(yps_base.mean(0))
     return DeletionAccuracyDeltaResult(delta[None])
 
 
@@ -272,17 +269,9 @@ def basic_deletion_experiment(
     deletion_ranges_half_excl = [
         (start, end + 1) for start, end in deletion_ranges_incl
     ]
-    # print("HI")
-    # print(ex)
-    # print(stable_hash_cached(model))
-    # print(model_cl)
-    # print(deletion_ranges_half_excl)
     yps, metas = deletion_experiment(
         ex, model, model_cl, deletion_ranges_half_excl, repair_strategy_spec
     )
-    # print("WHATEVER")
-    # print(yps)
-    # print("DONE")
     yps_base, yps_deletions = yps[0], yps[1:]
     yps_deletions = yps_deletions.reshape(delete_up_to, 4, 4)
     metas = np.array(metas).reshape(delete_up_to, 4)
