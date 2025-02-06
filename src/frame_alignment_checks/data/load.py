@@ -1,13 +1,12 @@
 import gzip
 import pickle
+from importlib.resources import as_file, files
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
 
 import frame_alignment_checks
-from importlib.resources import files, as_file
-
 
 from ..coding_exon import CodingExon
 
@@ -24,7 +23,6 @@ def load_long_canonical_internal_coding_exons():
     source = files(frame_alignment_checks.data).joinpath(
         "long_canonical_internal_coding_exons.pkl"
     )
-    # with open(path, "rb") as f:
     with as_file(source) as path:
         with open(path, "rb") as f:
             return [CodingExon(**d) for d in pickle.load(f)]
