@@ -28,8 +28,6 @@ class TestDeletion(unittest.TestCase):
                         self.assertLess(abs(matr[i, j]), 5e-2)
             else:
                 self.check_matrix_non_multiple(matr)
-        # rows represent deletion locations, columns splice sites
-        1 / 0
 
     def check_matrix_non_multiple(self, matr):
         for i, deletion_location in enumerate(locs):
