@@ -6,8 +6,8 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
-from .coding_exon import CodingExon
 from . import data
+from .coding_exon import CodingExon
 
 
 def load_validation_gene(idx) -> Tuple[np.ndarray, np.ndarray]:
