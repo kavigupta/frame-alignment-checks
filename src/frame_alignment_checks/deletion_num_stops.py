@@ -15,7 +15,7 @@ def get_phases():
     )
 
 
-def num_stops_by_phase(distance_out):
+def num_stops_by_phase(distance_out, *, limit=None):
     """
     Compute the number of stops in each phase category.
 
@@ -28,6 +28,7 @@ def num_stops_by_phase(distance_out):
     of the codon with respect to the reading frame!!
 
     :param distance_out: The distance out to compute the stops.
+    :param limit: The limit to use for the experiment.
 
     :return: num_stops
     """
@@ -36,6 +37,7 @@ def num_stops_by_phase(distance_out):
             ModelToAnalyze(None, 0, 0, 0),
             dict(type="RemoveStopCodons", phase_wrt_start=i),
             distance_out=distance_out,
+            limit=limit,
         )[2][..., [1, 2]]
         for i in range(3)
     ]
@@ -106,5 +108,5 @@ def num_in_frame_stops(distance_out):
     return (one_hot_phase.transpose(3, 0, 1, 2) * num_stops).sum(0)
 
 
-def num_open_reading_frames(distance_out):
-    return (num_stops_by_phase(distance_out) == 0).sum(0)
+def num_open_reading_frames(distance_out, *, limit=None):
+    return (num_stops_by_phase(distance_out, limit=limit) == 0).sum(0)
