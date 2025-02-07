@@ -42,7 +42,7 @@ class DeletionAccuracyDeltaResult:
     ) -> "DeletionAccuracyDeltaResult":
         return cls(np.concatenate([r.raw_data for r in results], axis=0))
 
-    def mean_effect_matrix(self, num_deletions) -> np.ndarray:
+    def mean_effect_matrix(self, num_deletions: int) -> np.ndarray:
         """
         Returns a matrix representing the mean effect of ``num_deletions`` deletions at
         each location on each splice site.
@@ -51,10 +51,14 @@ class DeletionAccuracyDeltaResult:
         :return: The mean effect matrix. Shape (4, 4). The rows represent deletion
             locations, and the columns represent affected splice sites.
         """
+        if not 1 <= num_deletions <= self.raw_data.shape[2]:
+            raise ValueError(
+                f"num_deletions should be between 1 and {self.raw_data.shape[2]}, inclusive"
+            )
         return self.raw_data[:, :, num_deletions - 1].mean((0, 1))
 
     def mean_effect_series(
-        self, deletion_location, affected_splice_site, mean=True
+        self, deletion_location: str, affected_splice_site: str, mean=True
     ) -> np.ndarray:
         """
         Returns the mean effect of deletions at the given location on the given splice site.
@@ -65,7 +69,8 @@ class DeletionAccuracyDeltaResult:
             ``basic_deletion_experiment_affected_splice_sites``.
         :param mean: Whether to take the mean across all exons.
         :return: The mean effect by deletion location. This is not aggregated over
-            deletions or seeds. Shape: (num_seeds, num_deletions)
+            deletions or seeds. Shape: ``(num_seeds, num_deletions)``. If ``mean`` is
+            False, the shape is ``(num_seeds, num_exons, num_deletions)``.
         """
         deletion_location_idx = basic_deletion_experiment_locations.index(
             deletion_location
@@ -81,17 +86,20 @@ class DeletionAccuracyDeltaResult:
     def mean_effect_masked(
         self,
         mask=None,
-        deletion_locations=("right of A", "left of D"),
-        affected_splice_sites=("A", "D"),
+        deletion_locations: Tuple[str] = ("right of A", "left of D"),
+        affected_splice_sites: Tuple[str] = ("A", "D"),
     ) -> np.ndarray:
         """
         Compute the mean effect of deletions on the given deletion locations and splice sites, with a mask.
 
         :param mask: A mask to apply to the data. If provided, the mask should be
             of the shape mask[exon_id, num_deletions - 1, deletion_location out of deletion_locations].
+        :param deletion_locations: The deletion locations to consider. Each must be one of
+            ``basic_deletion_experiment_locations``.
+        :param affected_splice_sites: The affected splice sites to consider. Each must be one of
+            ``basic_deletion_experiment_affected_splice_sites``.
         :return: The mean effect of deletions at the given locations on the given sites.
-            Shape (num_seeds, num_deletions).
-            Only computed for where the mask is present
+            Shape ``(num_seeds, num_deletions)``. Only averaged over sites where the mask is on.
         """
         mask_shape = (
             self.raw_data.shape[1],
@@ -135,8 +143,15 @@ def accuracy_delta_given_deletion_experiment_for_multiple_series(
     distance_out,
     binary_metric=True,
 ):
+    """
+    A wrapper around ``accuracy_delta_given_deletion_experiment`` that takes a dictionary of
+    model series and returns a dictionary of results. The keys of the input dictionary are used as the keys
+    of the output dictionary.
+
+    See ``accuracy_delta_given_deletion_experiment`` for more details.
+    """
     return {
-        name: accuracy_delta_given_deletion_experiment_for_series(
+        name: _accuracy_delta_given_deletion_experiment_for_series(
             mod,
             repair_spec=repair_spec,
             distance_out=distance_out,
@@ -146,7 +161,7 @@ def accuracy_delta_given_deletion_experiment_for_multiple_series(
     }
 
 
-def accuracy_delta_given_deletion_experiment_for_series(
+def _accuracy_delta_given_deletion_experiment_for_series(
     mod: List[ModelToAnalyze],
     *,
     repair_spec=dict(type="NoRepair"),
@@ -176,7 +191,18 @@ def accuracy_delta_given_deletion_experiment(
     binary_metric=True,
     mod_for_base=None,
     limit=None,
-):
+) -> DeletionAccuracyDeltaResult:
+    """
+    Accuracy delta given deletion experiment. This function runs a deletion experiment on the given model
+    and returns the accuracy delta for each deletion.
+
+    :param mod: The model to run the deletion experiment on.
+    :param repair_spec: The repair strategy to use.
+    :param distance_out: The distance out to use for deletions.
+    :param binary_metric: Whether to use a binary metric for the predictions.
+
+    :returns: The accuracy delta for each deletion, as a ``DeletionAccuracyDeltaResult``.
+    """
     assert mod.model is not None
     if mod_for_base is None:
         mod_for_base = mod

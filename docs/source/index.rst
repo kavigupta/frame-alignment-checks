@@ -8,4 +8,5 @@ checking whether splicing prediction models are using frame alignment informatio
    :maxdepth: 2
    :caption: Contents:
 
+   deletion
    utilities

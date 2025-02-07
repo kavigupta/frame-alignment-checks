@@ -3,7 +3,6 @@ from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
 from .deletion import (
     accuracy_delta_given_deletion_experiment,
     accuracy_delta_given_deletion_experiment_for_multiple_series,
-    accuracy_delta_given_deletion_experiment_for_series,
     basic_deletion_experiment_affected_splice_sites,
     basic_deletion_experiment_locations,
 )
