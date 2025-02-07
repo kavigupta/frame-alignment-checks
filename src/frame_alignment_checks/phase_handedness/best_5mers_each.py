@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..data.load import load_train_counts_by_phase
+from ..load_data import load_train_counts_by_phase
 
 
 def get_phase_specific_9mers():

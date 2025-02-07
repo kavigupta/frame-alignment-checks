@@ -5,7 +5,7 @@ import tqdm.auto as tqdm
 from permacache import permacache
 from run_batched import run_batched
 
-from ..data.load import load_non_stop_donor_windows
+from ..load_data import load_non_stop_donor_windows
 from ..models import ModelToAnalyze
 from ..utils import all_seqs, device_of, extract_center, stable_hash_cached
 
