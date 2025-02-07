@@ -72,7 +72,7 @@ class SpliceModelWithORF(torch.nn.Module):
 
 def calibrated_model(m):
     m = m.eval()
-    acc, thresholds = calibration_accuracy_and_thresholds(m, m.cl_model)
+    acc, thresholds = calibration_accuracy_and_thresholds(m, m.cl_model, limit=101)
     print(acc, thresholds)
     return ModelToAnalyze(m, m.cl_model, m.cl_model, thresholds)
 
