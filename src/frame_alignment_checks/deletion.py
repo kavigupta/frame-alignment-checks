@@ -175,15 +175,16 @@ def accuracy_delta_given_deletion_experiment(
     distance_out,
     binary_metric=True,
     mod_for_base=None,
+    limit=None,
 ):
     assert mod.model is not None
     if mod_for_base is None:
         mod_for_base = mod
     _, yps_deletions, _ = accuracy_given_deletion_experiment(
-        mod, repair_spec, distance_out=distance_out
+        mod, repair_spec, distance_out=distance_out, limit=limit
     )
     yps_base, _, _ = accuracy_given_deletion_experiment(
-        mod_for_base, repair_spec, distance_out=distance_out
+        mod_for_base, repair_spec, distance_out=distance_out, limit=limit
     )
     if binary_metric:
         thresh_dada = mod.thresholds[[1, 0, 1, 0]]
@@ -195,10 +196,10 @@ def accuracy_delta_given_deletion_experiment(
 
 
 def accuracy_given_deletion_experiment(
-    model_for_deletion, repair_strategy_spec, **kwargs
+    model_for_deletion, repair_strategy_spec, *, limit=None, **kwargs
 ):
     return basic_deletion_experiment_multi(
-        load_long_canonical_internal_coding_exons(),
+        load_long_canonical_internal_coding_exons()[:limit],
         model_for_deletion.model,
         model_for_deletion.model_cl,
         repair_strategy_spec,
