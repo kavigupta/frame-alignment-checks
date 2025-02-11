@@ -1,12 +1,12 @@
 from .coding_exon import CodingExon
 from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
-from .deletion import (
+from .deletion.delete import (
     accuracy_delta_given_deletion_experiment,
     accuracy_delta_given_deletion_experiment_for_multiple_series,
     basic_deletion_experiment_affected_splice_sites,
     basic_deletion_experiment_locations,
 )
-from .deletion_num_stops import num_in_frame_stops, num_open_reading_frames
+from .deletion.deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .models import ModelToAnalyze
 from .phase_handedness.compute_self_agreement import (
     phase_handedness_self_agreement_score,
