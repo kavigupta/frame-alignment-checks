@@ -1,6 +1,6 @@
 from .delete import (
-    accuracy_delta_given_deletion_experiment,
-    accuracy_delta_given_deletion_experiment_for_multiple_series,
+    accuracy_delta_given_deletion_experiment as experiment,
+    accuracy_delta_given_deletion_experiment_for_multiple_series as experiments,
     basic_deletion_experiment_affected_splice_sites,
     basic_deletion_experiment_locations,
     perform_deletion,

@@ -1,6 +1,7 @@
 import unittest
 
-from frame_alignment_checks.deletion import accuracy_delta_given_deletion_experiment
+import frame_alignment_checks as fac
+
 from frame_alignment_checks.deletion import (
     basic_deletion_experiment_affected_splice_sites as aff,
 )
@@ -15,14 +16,14 @@ num_exons_studied = 500
 class TestDeletion(unittest.TestCase):
     @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
-        result = accuracy_delta_given_deletion_experiment(
+        result = fac.deletion.experiment(
             lssi_model(), distance_out=40, limit=num_exons_studied
         )
         self.assertEqual((result.raw_data != 0).sum(), 0)
 
     @skip_on_mac
     def test_lssi_with_orf_has_impact_in_certain_contexts_only(self):
-        result = accuracy_delta_given_deletion_experiment(
+        result = fac.deletion.experiment(
             lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
         )
         for num_deletions in range(1, 1 + 9):
@@ -39,7 +40,7 @@ class TestDeletion(unittest.TestCase):
 
     @skip_on_mac
     def test_lssi_orf_num_stops_mask(self):
-        result = accuracy_delta_given_deletion_experiment(
+        result = fac.deletion.experiment(
             lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
         )
         num_rf_each = num_open_reading_frames(distance_out=40, limit=num_exons_studied)
@@ -60,7 +61,7 @@ class TestDeletion(unittest.TestCase):
 
     @skip_on_mac
     def test_lssi_orf_num_stops_series(self):
-        result = accuracy_delta_given_deletion_experiment(
+        result = fac.deletion.experiment(
             lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
         )
         mes = result.mean_effect_series("left of A", "A")
