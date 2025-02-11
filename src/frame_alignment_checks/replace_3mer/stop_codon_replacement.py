@@ -5,17 +5,17 @@ import tqdm.auto as tqdm
 from permacache import permacache, stable_hash
 from run_batched import run_batched
 
-from .load_data import load_long_canonical_internal_coding_exons, load_validation_gene
-from .models import ModelToAnalyze
-from .stop_codon_replacement_no_undesired_changes import (
-    stop_codon_no_undesired_changes_mask,
-)
-from .utils import (
+from ..load_data import load_long_canonical_internal_coding_exons, load_validation_gene
+from ..models import ModelToAnalyze
+from ..utils import (
     all_3mers,
     collect_windows,
     device_of,
     extract_center,
     stable_hash_cached,
+)
+from .stop_codon_replacement_no_undesired_changes import (
+    stop_codon_no_undesired_changes_mask,
 )
 
 

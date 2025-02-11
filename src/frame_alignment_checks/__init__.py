@@ -26,16 +26,16 @@ from .real_experiments.experiment_results import (
 from .real_experiments.math import k_closest_index_array
 from .real_experiments.plot_masks import plot_raw_real_experiment_results
 from .real_experiments.plot_summary import plot_real_experiment_summary
-from .statistics.handedness_logos import (
-    phase_handedness_plot_relative_logos,
-    phase_handedness_print_statistics_by_phase,
-)
-from .stop_codon_replacement import (
+from .replace_3mer.stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
     stop_codon_replacement_delta_accuracy_for_multiple_series,
     stop_codon_replacement_delta_accuracy_for_series,
 )
-from .stop_codon_replacement_no_undesired_changes import (
+from .replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
+)
+from .statistics.handedness_logos import (
+    phase_handedness_plot_relative_logos,
+    phase_handedness_print_statistics_by_phase,
 )
 from .utils import display_permutation_test_p_values
