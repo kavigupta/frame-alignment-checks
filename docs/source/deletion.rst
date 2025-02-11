@@ -1,8 +1,8 @@
 Deletion Experiments
 ===========================================
 
-.. autofunction:: fac.accuracy_delta_given_deletion_experiment
-.. autofunction:: fac.accuracy_delta_given_deletion_experiment_for_multiple_series
+.. autofunction:: fac.deletion.experiment
+.. autofunction:: fac.deletion.experiments
 
 .. autoclass:: fac.deletion.DeletionAccuracyDeltaResult
     :members:
