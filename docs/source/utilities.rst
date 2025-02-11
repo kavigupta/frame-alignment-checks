@@ -8,6 +8,6 @@ Utilities
 Plotting utilities
 ------------------
 
-.. autofunction:: fac.plotting.colors.line_color
-.. autofunction:: fac.plotting.colors.bar_color
+.. autofunction:: fac.plotting.line_color
+.. autofunction:: fac.plotting.bar_color
 
