@@ -14,5 +14,7 @@ This documentation assumes that you have imported the package as follows:
    :maxdepth: 2
    :caption: Contents:
 
+   models
+   exons
    deletion
    utilities

@@ -5,6 +5,16 @@ from dataclasses import dataclass
 class CodingExon:
     """
     Represents a coding exon in a gene. Can be constitutive or alternative.
+
+    To load these, see ```load_long_canonical_internal_coding_exons```.
+
+    :param gene_idx: Index of the gene in the validation set
+    :param acceptor: Position of the acceptor site. Start of the exon
+    :param donor: Position of the donor site. Note: not the same as the "end" of the exon since that's exclusive
+    :param prev_donor: Position of the previous donor site
+    :param next_acceptor: Position of the next acceptor site
+    :param phase_start: The phase of the start of the exon, 0, 1, or 2. This is relative to the coding frame, i.e.,
+        a phase of 1 indicates that the exon starts with a 2mer followed by a codon.
     """
 
     gene_idx: int  # Index of the gene in the validation set

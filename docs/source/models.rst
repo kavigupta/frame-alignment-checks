@@ -1,0 +1,4 @@
+Models
+===========================================
+
+.. autoclass:: fac.ModelToAnalyze
