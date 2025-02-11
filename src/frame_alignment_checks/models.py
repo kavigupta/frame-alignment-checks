@@ -11,6 +11,28 @@ from .utils import stable_hash_cached
 
 @dataclass
 class ModelToAnalyze:
+    """
+    Model to analyze for frame alignment checks. Contains the module as well as metadata
+    regarding the model.
+
+    :param model: The model to analyze. This model is assumed to output a 3-dimensional tensor
+        of shape (N, T, 3) where N is the batch size, T is the sequence length, and 3 is the
+        number of classes. The model is assumed to output logit probabilities (they ill be
+        softmaxed internally).
+    :param model_cl: The context length of the model. This is the number of bases on each side
+        of the central base that the model uses for prediction. This is used for padding the
+        input sequences.
+    :param cl_model_clipped: The amount the model clips from each side. The amount the
+        model clips from the input sequence. I.e.., if the input is of size (N, T, 4), the
+        output will be of size (N, T - cl_model_clipped, 3). For some models, this is the
+        same as model_cl (e.g., SpliceAI-400 has 400 for both), but for others, this is
+        smaller (e.g., SAM-AM requires 5400nt of context but only clips 400 for efficiency).
+    :param thresholds: The calibration thresholds for the model. These are such that the model
+        will predict the correct number of positive examples on average in each channel on
+        a valadition set of interest. Shape: (2,), no threshold for the first channel. These
+        thresholds should be in the range (0, 1), i.e., softmaxed probabilities.
+    """
+
     model: torch.nn.Module
     model_cl: int
     cl_model_clipped: int
