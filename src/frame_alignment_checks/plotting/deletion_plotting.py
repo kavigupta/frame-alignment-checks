@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..deletion import (
+from ..deletion.delete import (
     basic_deletion_experiment_affected_splice_sites,
     basic_deletion_experiment_locations,
 )
-from ..deletion_num_stops import num_open_reading_frames
+from ..deletion.deletion_num_stops import num_open_reading_frames
 from ..utils import bootstrap_series
 from .colors import bar_color, line_color
 
