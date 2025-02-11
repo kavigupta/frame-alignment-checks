@@ -1,7 +1,6 @@
 import unittest
 
 import frame_alignment_checks as fac
-
 from frame_alignment_checks.deletion import (
     basic_deletion_experiment_affected_splice_sites as aff,
 )
