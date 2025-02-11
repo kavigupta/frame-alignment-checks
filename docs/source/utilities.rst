@@ -3,6 +3,7 @@ Utilities
 
 .. autofunction:: fac.utils.parse_sequence_as_one_hot
 .. autofunction:: fac.utils.bootstrap_series
+.. autofunction:: fac.utils.draw_bases
 
 Plotting utilities
 ------------------

@@ -101,8 +101,16 @@ def bootstrap_series(ys: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return lo, hi
 
 
-def draw_bases(xs):
-    if xs.dtype == np.int and 0 < xs.max() < 4:
+def draw_bases(xs: np.ndarray):
+    """
+    Draw the bases from the given array.
+
+    :param xs: The array to draw the bases from. Should be of shape (..., 4) and one-hot encoded, or
+        of shape (...,) and integer encoded with all values in (0, 1, 2, 3). Will be returned as a
+        nested list of strings, where (N, 4) will be returned as a string of length N and (N, M, 4)
+        will be returned as a list of N strings of length M.
+    """
+    if np.issubdtype(xs.dtype, np.integer) and 0 < xs.max() < 4:
         xs = np.eye(4)[xs]
     assert xs.shape[-1] == 4 and len(xs.shape) > 1
     if len(xs.shape) == 2:
