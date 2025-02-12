@@ -150,7 +150,8 @@ def plot_by_codon_table(
     Plots the same information as plot_by_codon, but in a table format.
 
     :param results: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```.
-    :param no_undesired_changes: The mask of experiment results to be used. First output of ```fac.replace_3mer.experiments```.
+    :param no_undesired_changes: The mask of experiment results to be used.
+      First output of ```fac.replace_3mer.experiments```.
     """
     # pylint: disable=no-member
     cmap = plt.cm.viridis
