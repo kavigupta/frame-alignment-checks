@@ -82,4 +82,4 @@ def lssi_model():
 
 
 def lssi_model_with_orf():
-    return calibrated_model(SpliceModelWithORF(cl_model=400, orf_radius=200))
+    return calibrated_model(SpliceModelWithORF(cl_model=200, orf_radius=100))

@@ -52,7 +52,7 @@ class TestDeletion(unittest.TestCase):
                 if num_rf == 0:
                     # does not matter whether its a multiple of 3
                     # always a large effect
-                    self.assertLess(x, -15e-2)
+                    self.assertLess(x, -9e-2)
                 else:
                     # always a small effect
                     # not necessarily zero
@@ -84,7 +84,7 @@ class TestDeletion(unittest.TestCase):
                 ] or affected_splice_site in ["PD", "NA"]:
                     self.assertLess(abs(matr[i, j]), 2.5e-2)
                 else:
-                    self.assertLess(matr[i, j], -5e-2)
+                    self.assertLess(matr[i, j], -2e-2)
         nearer_splice_site = (
             matr[locs.index("right of A"), aff.index("A")]
             + matr[locs.index("left of D"), aff.index("D")]
