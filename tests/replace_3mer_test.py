@@ -3,7 +3,6 @@ import unittest
 import numpy as np
 
 import frame_alignment_checks as fac
-
 from frame_alignment_checks.replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
