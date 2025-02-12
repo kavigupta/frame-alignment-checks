@@ -27,7 +27,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "frozendict>=2.4.6",
-        "permacache>=3.11.0",
+        "permacache>=3.12.0",
         "tqdm>4.0.0",
         "render-psam>=1.0.1",
         "run-batched>=1.0.2",
