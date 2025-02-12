@@ -214,7 +214,7 @@ def plot_by_codon_table(
         values=np.linspace(cmin, cmax, 100),
         # small width
         fraction=0.02,
-        ax=ax_models,
+        ax=ax_phases,
     )
     # monospace font for yticks
     for tick in ax_models.get_yticklabels():
