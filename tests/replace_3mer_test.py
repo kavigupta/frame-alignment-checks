@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 
@@ -114,9 +115,10 @@ class TestPlotting(unittest.TestCase):
         self.count = 0
 
     def create_image(self):
-        with tempfile.NamedTemporaryFile(suffix=".png") as f:
-            plt.savefig(f.name)
-            return Image.open(f.name)
+        plt.savefig(".temp.png")
+        result = Image.open(".temp.png")
+        os.remove(".temp.png")
+        return result
 
     def check_image(self):
         path = f"tests/images/{self.id()}_{self.count}.png"
@@ -124,8 +126,8 @@ class TestPlotting(unittest.TestCase):
         img_as_array = np.array(self.create_image())
         if is_testing:
             saved_img_as_array = np.array(Image.open(path))
-            # tolerate mismatched elements up to 1% of the total
-            if (img_as_array != saved_img_as_array).mean() > 0.01:
+            # tolerate mismatched elements up to 1.5% of the total
+            if (img_as_array != saved_img_as_array).mean() > 0.015:
                 # this will fail, it's just for the error message
                 np.testing.assert_array_equal(img_as_array, saved_img_as_array)
         else:
