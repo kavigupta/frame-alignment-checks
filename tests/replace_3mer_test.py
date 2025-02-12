@@ -115,14 +115,15 @@ class TestPlotting(unittest.TestCase):
 
     def create_image(self):
         plt.savefig(".temp.png")
-        result = Image.open(".temp.png")
+        with Image.open(".temp.png") as i:
+            result = np.array(i)
         os.remove(".temp.png")
         return result
 
     def check_image(self):
         path = f"tests/images/{self.id()}_{self.count}.png"
         self.count += 1
-        img_as_array = np.array(self.create_image())
+        img_as_array = self.create_image()
         if is_testing:
             saved_img_as_array = np.array(Image.open(path))
             # tolerate mismatched elements up to 1.5% of the total
