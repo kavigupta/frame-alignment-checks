@@ -24,10 +24,6 @@ from .real_experiments.experiment_results import (
 from .real_experiments.math import k_closest_index_array
 from .real_experiments.plot_masks import plot_raw_real_experiment_results
 from .real_experiments.plot_summary import plot_real_experiment_summary
-from .replace_3mer.stop_codon_replacement import (
-    stop_codon_replacement_delta_accuracy,
-    stop_codon_replacement_delta_accuracy_for_multiple_series,
-)
 from .replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )

@@ -2,9 +2,8 @@ import unittest
 
 import numpy as np
 
-from frame_alignment_checks.replace_3mer.stop_codon_replacement import (
-    stop_codon_replacement_delta_accuracy,
-)
+import frame_alignment_checks as fac
+
 from frame_alignment_checks.replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
@@ -60,14 +59,14 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
 class TestStopCodons(unittest.TestCase):
     @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
-        _, result = stop_codon_replacement_delta_accuracy(
+        _, result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
         )
         self.assertTrue((result == 0).all())
 
     @skip_on_mac
     def test_no_undesired_changes_effect(self):
-        no_undesired_changes, result = stop_codon_replacement_delta_accuracy(
+        no_undesired_changes, result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
@@ -81,7 +80,7 @@ class TestStopCodons(unittest.TestCase):
 
     @skip_on_mac
     def test_effect_direction(self):
-        no_undesired_changes, result = stop_codon_replacement_delta_accuracy(
+        no_undesired_changes, result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
