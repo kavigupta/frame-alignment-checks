@@ -144,11 +144,11 @@ def accuracy_delta_given_deletion_experiment_for_multiple_series(
     binary_metric=True,
 ):
     """
-    A wrapper around ``accuracy_delta_given_deletion_experiment`` that takes a dictionary of
+    A wrapper around ``fac.deletion.experiment`` that takes a dictionary of
     model series and returns a dictionary of results. The keys of the input dictionary are used as the keys
     of the output dictionary.
 
-    See ``accuracy_delta_given_deletion_experiment`` for more details.
+    See ``fac.deletion.experiment`` for more details.
     """
     return {
         name: _accuracy_delta_given_deletion_experiment_for_series(
