@@ -27,7 +27,6 @@ from .real_experiments.plot_summary import plot_real_experiment_summary
 from .replace_3mer.stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
     stop_codon_replacement_delta_accuracy_for_multiple_series,
-    stop_codon_replacement_delta_accuracy_for_series,
 )
 from .replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,

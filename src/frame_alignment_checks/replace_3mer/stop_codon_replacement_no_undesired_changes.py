@@ -23,7 +23,7 @@ def stop_codon_no_undesired_changes_mask(o_seq):
     # mutated_seqs_flat = mutated_seqs.reshape(-1, mutated_seqs.shape[-1])
     added_stop = (
         num_stop_codons_at_phases_batched(mutated_seqs)
-        - num_stop_codons_at_phases_batched(o_seq)[..., None, None]
+        - num_stop_codons_at_phases_batched(o_seq)[..., None, None, :]
     )
     # ignore desired changes
     added_stop[:, :, [0, 1, 2], :, [0, 1, 2]] = 0
