@@ -1,9 +1,9 @@
 import tempfile
 import unittest
 
+import numpy as np
 from matplotlib import pyplot as plt
 from PIL import Image
-import numpy as np
 
 import frame_alignment_checks as fac
 from frame_alignment_checks.utils import all_3mers, draw_bases
