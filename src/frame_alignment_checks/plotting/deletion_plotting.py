@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ..deletion.delete import (
-    basic_deletion_experiment_affected_splice_sites,
-    basic_deletion_experiment_locations,
+    affected_splice_sites,
+    mutation_locations,
 )
 from ..deletion.deletion_num_stops import num_open_reading_frames
 from ..utils import bootstrap_series
@@ -43,8 +43,8 @@ def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
                     va="center",
                     color="black" if value_relative_to_limits > 0.5 else "white",
                 )
-        ax.set_xticks(np.arange(4), basic_deletion_experiment_affected_splice_sites)
-        ax.set_yticks(np.arange(4), basic_deletion_experiment_locations)
+        ax.set_xticks(np.arange(4), affected_splice_sites)
+        ax.set_yticks(np.arange(4), mutation_locations)
         ax.set_title(name)
         plt.colorbar(im, ax=ax)
     plt.suptitle(f"Starting at {distance_out}; {num_deletions} deletions")
@@ -67,7 +67,7 @@ def plot_deletion_effect(deltas_by_model, distance_out):
         # delta = 100 * delta.mean(1)
         # delta = delta[:, :, :, [1, 2]]  # only the A and D
         xs = 1 + np.arange(9)
-        for i, dl in enumerate(basic_deletion_experiment_locations):
+        for i, dl in enumerate(mutation_locations):
             for j, loc in enumerate("AD"):
                 ys = 100 * delta.mean_effect_series(dl, loc)
                 ax.plot(

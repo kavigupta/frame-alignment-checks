@@ -13,14 +13,14 @@ from ..models import ModelToAnalyze
 from ..utils import collect_windows, device_of, extract_center, stable_hash_cached
 from .deletion_repair import repair_strategy_types
 
-basic_deletion_experiment_locations = [
+mutation_locations = [
     "left of A",
     "right of A",
     "left of D",
     "right of D",
 ]
 
-basic_deletion_experiment_affected_splice_sites = ["PD", "A", "D", "NA"]
+affected_splice_sites = ["PD", "A", "D", "NA"]
 
 
 @dataclass
@@ -72,11 +72,11 @@ class DeletionAccuracyDeltaResult:
             deletions or seeds. Shape: ``(num_seeds, num_deletions)``. If ``mean`` is
             False, the shape is ``(num_seeds, num_exons, num_deletions)``.
         """
-        deletion_location_idx = basic_deletion_experiment_locations.index(
+        deletion_location_idx = mutation_locations.index(
             deletion_location
         )
         affected_splice_site_idx = (
-            basic_deletion_experiment_affected_splice_sites.index(affected_splice_site)
+            affected_splice_sites.index(affected_splice_site)
         )
         result = self.raw_data[:, :, :, deletion_location_idx, affected_splice_site_idx]
         if not mean:

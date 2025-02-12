@@ -2,8 +2,8 @@ from . import deletion, replace_3mer
 from .coding_exon import CodingExon
 from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
 from .deletion.delete import (
-    basic_deletion_experiment_affected_splice_sites,
-    basic_deletion_experiment_locations,
+    affected_splice_sites,
+    mutation_locations,
 )
 from .deletion.deletion_num_stops import num_in_frame_stops, num_open_reading_frames
 from .models import ModelToAnalyze

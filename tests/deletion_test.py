@@ -2,9 +2,9 @@ import unittest
 
 import frame_alignment_checks as fac
 from frame_alignment_checks.deletion import (
-    basic_deletion_experiment_affected_splice_sites as aff,
+    affected_splice_sites as aff,
 )
-from frame_alignment_checks.deletion import basic_deletion_experiment_locations as locs
+from frame_alignment_checks.deletion import mutation_locations as locs
 from frame_alignment_checks.deletion import num_open_reading_frames
 from tests.models.models import lssi_model, lssi_model_with_orf
 from tests.utils import skip_on_mac
