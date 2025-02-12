@@ -72,12 +72,8 @@ class DeletionAccuracyDeltaResult:
             deletions or seeds. Shape: ``(num_seeds, num_deletions)``. If ``mean`` is
             False, the shape is ``(num_seeds, num_exons, num_deletions)``.
         """
-        deletion_location_idx = mutation_locations.index(
-            deletion_location
-        )
-        affected_splice_site_idx = (
-            affected_splice_sites.index(affected_splice_site)
-        )
+        deletion_location_idx = mutation_locations.index(deletion_location)
+        affected_splice_site_idx = affected_splice_sites.index(affected_splice_site)
         result = self.raw_data[:, :, :, deletion_location_idx, affected_splice_site_idx]
         if not mean:
             return result

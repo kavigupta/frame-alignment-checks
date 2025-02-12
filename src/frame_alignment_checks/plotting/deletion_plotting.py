@@ -1,10 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..deletion.delete import (
-    affected_splice_sites,
-    mutation_locations,
-)
+from ..deletion.delete import affected_splice_sites, mutation_locations
 from ..deletion.deletion_num_stops import num_open_reading_frames
 from ..utils import bootstrap_series
 from .colors import bar_color, line_color

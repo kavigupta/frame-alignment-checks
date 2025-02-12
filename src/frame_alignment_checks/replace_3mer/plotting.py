@@ -3,12 +3,11 @@ from typing import Dict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from frame_alignment_checks.replace_3mer.stop_codon_replacement import Replace3MerResult
-
 from ..bootstrap import bootstrap
 from ..compute_stop_codons import is_stop
 from ..plotting.colors import bar_color, line_color
 from ..utils import all_3mers, bootstrap_series, draw_bases
+from .stop_codon_replacement import Replace3MerResult
 
 
 def plot_by_codon(result: Replace3MerResult, mask: np.ndarray, *, ax=None):

@@ -20,7 +20,12 @@ def all_seqs(n, *, amount=4):
 
 
 @lru_cache(None)
-def all_3mers():
+def all_3mers() -> np.ndarray:
+    """
+    The 64 possible 3mers. We always use this order for consistency.
+
+    :returns: The 64 possible 3mers. Will be of shape (64, 4).
+    """
     return np.array(list(all_seqs(3)))
 
 

@@ -1,9 +1,7 @@
 import numpy as np
 import torch
 
-from frame_alignment_checks import ModelToAnalyze
-from frame_alignment_checks.compute_stop_codons import all_frames_closed
-from frame_alignment_checks.models import calibration_accuracy_and_thresholds
+import frame_alignment_checks as fac
 
 from .lssi import load_with_remapping_pickle
 
@@ -59,7 +57,7 @@ class SpliceModelWithORF(torch.nn.Module):
                 ]
             else:
                 raise ValueError(site_type)
-            [is_closed] = all_frames_closed([grab_zone])
+            [is_closed] = fac.all_frames_closed([grab_zone])
             if is_closed:
                 yp[batch_idx, seq_idx, 0] = 0
                 yp[batch_idx, seq_idx, 1:] = -1000
@@ -72,9 +70,11 @@ class SpliceModelWithORF(torch.nn.Module):
 
 def calibrated_model(m):
     m = m.eval()
-    acc, thresholds = calibration_accuracy_and_thresholds(m, m.cl_model, limit=101)
+    acc, thresholds = fac.models.calibration_accuracy_and_thresholds(
+        m, m.cl_model, limit=101
+    )
     print(acc, thresholds)
-    return ModelToAnalyze(m, m.cl_model, m.cl_model, thresholds)
+    return fac.ModelToAnalyze(m, m.cl_model, m.cl_model, thresholds)
 
 
 def lssi_model():
