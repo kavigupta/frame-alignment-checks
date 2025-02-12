@@ -31,7 +31,7 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
         (
             original_seq_new,
             acc_delta[name],
-        ) = stop_codon_replacement_delta_accuracy_for_series(
+        ) = _stop_codon_replacement_delta_accuracy_for_series(
             models[name], name=name, distance_out=distance_out
         )
         nuc_masks.append(original_seq_new)
@@ -40,7 +40,7 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
     return nuc_masks[0], acc_delta
 
 
-def stop_codon_replacement_delta_accuracy_for_series(
+def _stop_codon_replacement_delta_accuracy_for_series(
     ms: List[ModelToAnalyze], *, name=None, distance_out
 ):
     nuc_masks, deltas = [
@@ -59,15 +59,14 @@ def stop_codon_replacement_delta_accuracy_for_series(
 
 
 def stop_codon_replacement_delta_accuracy(
-    *, model_for_analysis: ModelToAnalyze, distance_out
+    *, model_for_analysis: ModelToAnalyze, distance_out, limit=None
 ):
     """
     Compute the delta in accuracy when replacing codons at all 3 phases with all 64 possible codons.
 
-    :param model_for_analysis: The model to use
-    :param model_cl: The context length of the model
+    :param model_for_analysis: The model to compute the delta in accuracy for
     :param distance_out: The distance from the acceptor and donor sites to mutate the codons at
-    :param validation_thresholds: The thresholds to use for the model (acceptor, donor)
+    :param limit: The number of exons to run the experiment on. If None, run on all exons
 
     :returns: (original_seqs_all, delta_accuracies)
         no_undesired_changes_mask: Whether or not undesired changes might be caused by the
@@ -81,6 +80,7 @@ def stop_codon_replacement_delta_accuracy(
         model=model_for_analysis.model,
         model_cl=model_for_analysis.model_cl,
         distance_out=distance_out,
+        limit=limit,
     )
     yps_base, yps_mut = [
         (x > model_for_analysis.thresholds).astype(np.float64)
@@ -192,7 +192,7 @@ def clip_for_efficiency(model_cl, ex, target_codon_start, x, acc, don):
     return x, acc, don, target_codon_start
 
 
-def mutate_codons_experiment_all(*, model, model_cl, distance_out):
+def mutate_codons_experiment_all(*, model, model_cl, distance_out, limit):
     """
     See mutated_codons_experiment, which this wraps, for details.
 
@@ -209,7 +209,7 @@ def mutate_codons_experiment_all(*, model, model_cl, distance_out):
     original_seqs_all = []
     mut_preds_all = []
     orig_preds_all = []
-    for ex in tqdm.tqdm(load_long_canonical_internal_coding_exons()):
+    for ex in tqdm.tqdm(load_long_canonical_internal_coding_exons()[:limit]):
         assert ex.donor - ex.acceptor >= 2 * distance_out
         original_seq_acc, orig_pred_acc, mut_preds_acc = mutated_codons_experiment(
             model=model,
