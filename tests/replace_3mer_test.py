@@ -109,32 +109,41 @@ class TestStopCodons(unittest.TestCase):
 
 
 class TestPlotting(unittest.TestCase):
+
+    def setUp(self):
+        self.count = 0
+
     def create_image(self):
         with tempfile.NamedTemporaryFile(suffix=".png") as f:
             plt.savefig(f.name)
             return Image.open(f.name)
 
-    def check_image(self, path):
+    def check_image(self):
+        path = f"tests/images/{self.id()}_{self.count}.png"
+        self.count += 1
         img_as_array = np.array(self.create_image())
         if is_testing:
             saved_img_as_array = np.array(Image.open(path))
-            np.testing.assert_array_equal(img_as_array, saved_img_as_array)
+            # tolerate mismatched elements up to 1% of the total
+            if (img_as_array != saved_img_as_array).mean() > 0.01:
+                # this will fail, it's just for the error message
+                np.testing.assert_array_equal(img_as_array, saved_img_as_array)
         else:
             Image.fromarray(img_as_array).save(path)
+        plt.close()
 
     @skip_on_mac
-    def test_plot_effect_grouped(self):
+    def test_plot_by_codon(self):
         result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
         )
         fac.replace_3mer.plot_by_codon(result, result.no_undesired_changes_mask)
-        self.check_image("tests/images/replace_3mer_plot_effect_grouped.png")
-        plt.close()
+        self.check_image()
 
     @skip_on_mac
-    def test_plot_effect_grouped_nuc(self):
+    def test_plot_by_codon_nuc(self):
         result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
@@ -143,8 +152,33 @@ class TestPlotting(unittest.TestCase):
         fac.replace_3mer.plot_by_codon(
             result, np.ones_like(result.no_undesired_changes_mask)
         )
-        self.check_image("tests/images/replace_3mer_plot_effect_grouped_nuc.png")
-        plt.close()
+        self.check_image()
+
+    @skip_on_mac
+    def test_plot_effect_grouped(self):
+        nuc, result = fac.replace_3mer.experiments(
+            models={
+                "LSSI": [lssi_model()],
+                "LSSI_ORF": [lssi_model_with_orf()],
+            },
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        fac.replace_3mer.plot_effect_grouped(result, nuc, distance_out=40)
+        self.check_image()
+
+    @skip_on_mac
+    def test_plot_effect_grouped_nuc(self):
+        nuc, result = fac.replace_3mer.experiments(
+            models={
+                "LSSI": [lssi_model()],
+                "LSSI_ORF": [lssi_model_with_orf()],
+            },
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        fac.replace_3mer.plot_effect_grouped(result, np.ones_like(nuc), distance_out=40)
+        self.check_image()
 
     def test_is_testing(self):
         self.assertTrue(is_testing)

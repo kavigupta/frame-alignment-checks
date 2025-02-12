@@ -36,7 +36,7 @@ class Replace3MerResult:
 
     @classmethod
     def merge(cls, results: List["Replace3MerResult"]) -> "Replace3MerResult":
-        nucs = np.array([r.r.no_undesired_changes_mask for r in results])
+        nucs = np.array([r.no_undesired_changes_mask for r in results])
         assert (nucs == nucs[0]).all()
         return cls(
             acc_delta=np.concatenate([r.acc_delta for r in results], axis=0),
@@ -49,7 +49,7 @@ class Replace3MerResult:
     key_function=dict(models=stable_hash),
 )
 def stop_codon_replacement_delta_accuracy_for_multiple_series(
-    models: Dict[str, List[ModelToAnalyze]], distance_out
+    models: Dict[str, List[ModelToAnalyze]], distance_out, limit=None
 ) -> Dict[str, Replace3MerResult]:
     """
     A wrapper around ``fac.replace_3mer.experiment`` that takes a dictionary of
@@ -61,7 +61,7 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
     results = {}
     for name in models:
         results[name] = _stop_codon_replacement_delta_accuracy_for_series(
-            models[name], name=name, distance_out=distance_out
+            models[name], name=name, distance_out=distance_out, limit=limit
         )
     nuc_masks = np.array([r.no_undesired_changes_mask for r in results.values()])
     assert (nuc_masks == nuc_masks[0]).all()
@@ -69,12 +69,12 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
 
 
 def _stop_codon_replacement_delta_accuracy_for_series(
-    ms: List[ModelToAnalyze], *, name=None, distance_out
+    ms: List[ModelToAnalyze], *, name=None, distance_out, limit=None
 ) -> Replace3MerResult:
     return Replace3MerResult.merge(
         [
             stop_codon_replacement_delta_accuracy(
-                model_for_analysis=m, distance_out=distance_out
+                model_for_analysis=m, distance_out=distance_out, limit=limit
             )
             for m in tqdm.tqdm(ms, desc=name)
         ]
