@@ -14,9 +14,7 @@ from ..utils import (
     extract_center,
     stable_hash_cached,
 )
-from .stop_codon_replacement_no_undesired_changes import (
-    stop_codon_no_undesired_changes_mask,
-)
+from .stop_codon_replacement_no_undesired_changes import no_undesired_changes_mask
 
 
 @permacache(
@@ -96,7 +94,7 @@ def stop_codon_replacement_delta_accuracy(
     ]
     yps_mut_near_exon = yps_mut[:, [0, 1], :, :, [0, 1]]
     delta = 100 * (yps_mut_near_exon.transpose(1, 0, 2, 3) - yps_base[:, :, None, None])
-    return stop_codon_no_undesired_changes_mask(original_seqs_all), delta
+    return no_undesired_changes_mask(original_seqs_all), delta
 
 
 def with_all_codons(original_seq, codon_start_loc):

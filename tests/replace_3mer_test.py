@@ -3,9 +3,6 @@ import unittest
 import numpy as np
 
 import frame_alignment_checks as fac
-from frame_alignment_checks.replace_3mer.stop_codon_replacement_no_undesired_changes import (
-    stop_codon_no_undesired_changes_mask,
-)
 from frame_alignment_checks.utils import all_3mers, draw_bases
 from tests.models.models import lssi_model, lssi_model_with_orf
 from tests.utils import skip_on_mac
@@ -33,7 +30,7 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
             ]
         )
         [[no_undesired_changes_a, no_undesired_changes_d]] = (
-            stop_codon_no_undesired_changes_mask(o_seq[None])
+            fac.replace_3mer.no_undesired_changes_mask(o_seq[None])
         )
         # no undesired changes in D because there's no way to induce a stop
         # codon out of the frame being modified
