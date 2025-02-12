@@ -26,6 +26,13 @@ from .stop_codon_replacement_no_undesired_changes import (
 def stop_codon_replacement_delta_accuracy_for_multiple_series(
     models: Dict[str, List[ModelToAnalyze]], distance_out
 ):
+    """
+    A wrapper around ``fac.replace_3mer.experiment`` that takes a dictionary of
+    model series and returns a dictionary of results. The keys of the input dictionary are used as the keys
+    of the output dictionary.
+
+    See ``fac.replace_3mer.experiment`` for more details.
+    """
     nuc_masks, acc_delta = [], {}
     for name in models:
         (
@@ -68,13 +75,14 @@ def stop_codon_replacement_delta_accuracy(
     :param distance_out: The distance from the acceptor and donor sites to mutate the codons at
     :param limit: The number of exons to run the experiment on. If None, run on all exons
 
-    :returns: (original_seqs_all, delta_accuracies)
-        no_undesired_changes_mask: Whether or not undesired changes might be caused by the
-            substitutiton. Shape (N, 2, L, 64)
-        delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
-            delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
-            in percentage points, when you replace the codon at distance_out from the acceptor or donor
-            (A if distance_from_which == 0, D if distance_from_which == 1) with the codon at index codon
+    :returns: (no_undesired_changes_mask, delta_accuracies)
+
+     * no_undesired_changes_mask: Whether or not undesired changes might be caused by the
+       substitutiton. Shape (N, 2, L, 64)
+     * delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
+       delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
+       in percentage points, when you replace the codon at distance_out from the acceptor or donor
+       (A if distance_from_which == 0, D if distance_from_which == 1) with the codon at index codon
     """
     original_seqs_all, yps_base, yps_mut = mutate_codons_experiment_all(
         model=model_for_analysis.model,

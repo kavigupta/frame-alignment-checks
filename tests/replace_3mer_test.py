@@ -58,6 +58,14 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
 
 class TestStopCodons(unittest.TestCase):
     @skip_on_mac
+    def test_shape(self):
+        nuc, result = fac.replace_3mer.experiment(
+            model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
+        )
+        self.assertEqual(nuc.shape, (num_exons_studied, 2, 3, 64))
+        self.assertEqual(result.shape, (num_exons_studied, 2, 3, 64))
+
+    @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
         _, result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
