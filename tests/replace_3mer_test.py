@@ -55,27 +55,31 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
 class TestStopCodons(unittest.TestCase):
     @skip_on_mac
     def test_shape(self):
-        nuc, result = fac.replace_3mer.experiment(
+        result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
         )
-        self.assertEqual(nuc.shape, (num_exons_studied, 2, 3, 64))
-        self.assertEqual(result.shape, (num_exons_studied, 2, 3, 64))
+        self.assertEqual(
+            result.no_undesired_changes_mask.shape, (num_exons_studied, 2, 3, 64)
+        )
+        self.assertEqual(result.acc_delta.shape, (1, num_exons_studied, 2, 3, 64))
 
     @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
-        _, result = fac.replace_3mer.experiment(
+        result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
         )
-        self.assertTrue((result == 0).all())
+        self.assertTrue((result.acc_delta == 0).all())
 
     @skip_on_mac
     def test_no_undesired_changes_effect(self):
-        no_undesired_changes, result = fac.replace_3mer.experiment(
+        result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
         )
-        [phase_2, phase_0, phase_1] = (result * no_undesired_changes != 0).any((0, 1))
+        [phase_2, phase_0, phase_1] = (
+            result.acc_delta[0] * result.no_undesired_changes_mask != 0
+        ).any((0, 1))
         self.assertFalse(phase_2.any())
         self.assertFalse(phase_1.any())
         self.assertEqual(
@@ -84,17 +88,17 @@ class TestStopCodons(unittest.TestCase):
 
     @skip_on_mac
     def test_effect_direction(self):
-        no_undesired_changes, result = fac.replace_3mer.experiment(
+        result = fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
         )
         idxs = [rendered_codons.index(c) for c in ("TAA", "TAG", "TAA")]
-        no_undesired_changes, result = (
-            no_undesired_changes[..., idxs],
-            result[..., idxs],
+        nuc, acc_delta = (
+            result.no_undesired_changes_mask[..., idxs],
+            result.acc_delta[0][..., idxs],
         )
-        result_w_nuc = result[no_undesired_changes]
+        result_w_nuc = acc_delta[nuc]
         result_w_nuc = result_w_nuc[result_w_nuc != 0]
         self.assertGreater(
             (result_w_nuc < 0).mean(), 0.9, "Results must be overwhelmingly positive"

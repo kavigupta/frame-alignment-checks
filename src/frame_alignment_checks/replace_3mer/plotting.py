@@ -7,13 +7,18 @@ from ..plotting.colors import bar_color, line_color
 from ..utils import all_3mers, bootstrap_series, draw_bases
 
 
-def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
+def plot_by_codon(acc_delta, mask, *, ax=None):
     """
-    Plot the accuracy drop per codon, with the option to plot ranges of stop codons
-    and codons that are close to stop codons.
+    Plot the accuracy drop per codon. This is a detailed plot that shows the accuracy drop
+    for each codon, averaged across seeds. The plot is split by phase. The x-axis is the codon
+    and the y-axis is the accuracy drop.
 
-    :param acc_delta: The accuracy drop per codon.
-    :param mask: The mask of codons to be used
+    :param acc_delta: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```,
+      keyed into by the model key.
+    :param mask: The mask of experiment results to be used. Second output of ```fac.replace_3mer.experiments```,
+      or you can pass all ones to include all experiments; this is useful if you want to exclude
+      some mutations that cause undesired changes.
+    :param ax: The axis to plot on. If None, a new figure is created.
     """
     drawn, series = compute_series(acc_delta, mask)
     series_mean = series.mean(0)
@@ -54,9 +59,19 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
     ax.set_xlim(-gap * 2, xs[-1] + gap * 2)
 
 
-def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
+def plot_effect_grouped(acc_delta, mask, distance_out, **kwargs):
     """
-    Plot the summary of the accuracy drop per codon.
+    Plot the summary of the accuracy drop by codon, with all non-stop codons grouped together.
+    This is a summary plot that shows the accuracy drop for each codon, averaged across seeds;
+    and with all models placed on a single plot. The plot is split by model, phase, and then
+    codon.
+
+    :param acc_delta: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```
+    :param mask: The mask of experiment results to be used. Second output of ```fac.replace_3mer.experiments``` or
+      you can pass all ones to include all experiments; this is useful if you want to exclude some mutations that
+      cause undesired changes.
+    :param distance_out: The distance out from the splice site.
+    :param kwargs: Additional arguments to pass to plt.figure.
     """
     stops_mask = is_stop(all_3mers().argmax(-1))
     codon_masks = [
@@ -125,7 +140,8 @@ def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
     ax_models.grid(axis="y")
 
 
-def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
+def plot_by_codon_table(acc_delta, no_undesired_changes):
+    # TODO add documentation
     # pylint: disable=no-member
     cmap = plt.cm.viridis
     cmin, cmax = -30, 4

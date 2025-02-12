@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, List
 
 import numpy as np
@@ -17,13 +18,39 @@ from ..utils import (
 from .stop_codon_replacement_no_undesired_changes import no_undesired_changes_mask
 
 
+@dataclass
+class Replace3MerResult:
+    """
+    Contains the results of a replace 3mer experiment.
+
+    :param acc_delta: The delta in accuracy for all exons. Shape ```(num_seeds, num_exons, 2, 3, 64)```
+       ```acc_delta[seed_idx, batch_idx, distance_from_which, phase, codon]``` is the delta in accuracy,
+       in percentage points, when you replace the codon at distance_out from the acceptor or donor
+       (A if ```distance_from_which == 0```, D if ```distance_from_which == 1```) with the codon at index codon
+    :param no_undesired_changes_mask: Whether or not undesired changes might be caused by the
+        substitution. Shape ```(num_exons, 2, 3, 64)```.
+    """
+
+    acc_delta: np.ndarray
+    no_undesired_changes_mask: np.ndarray
+
+    @classmethod
+    def merge(cls, results: List["Replace3MerResult"]) -> "Replace3MerResult":
+        nucs = np.array([r.r.no_undesired_changes_mask for r in results])
+        assert (nucs == nucs[0]).all()
+        return cls(
+            acc_delta=np.concatenate([r.acc_delta for r in results], axis=0),
+            no_undesired_changes_mask=nucs[0],
+        )
+
+
 @permacache(
-    "frame_alignment_checks/stop_codon_replacement/stop_codon_replacement_delta_accuracy_for_multiple_series",
+    "frame_alignment_checks/replace_3mer/stop_codon_replacement_delta_accuracy_for_multiple_series",
     key_function=dict(models=stable_hash),
 )
 def stop_codon_replacement_delta_accuracy_for_multiple_series(
     models: Dict[str, List[ModelToAnalyze]], distance_out
-):
+) -> Dict[str, Replace3MerResult]:
     """
     A wrapper around ``fac.replace_3mer.experiment`` that takes a dictionary of
     model series and returns a dictionary of results. The keys of the input dictionary are used as the keys
@@ -31,41 +58,32 @@ def stop_codon_replacement_delta_accuracy_for_multiple_series(
 
     See ``fac.replace_3mer.experiment`` for more details.
     """
-    nuc_masks, acc_delta = [], {}
+    results = {}
     for name in models:
-        (
-            original_seq_new,
-            acc_delta[name],
-        ) = _stop_codon_replacement_delta_accuracy_for_series(
+        results[name] = _stop_codon_replacement_delta_accuracy_for_series(
             models[name], name=name, distance_out=distance_out
         )
-        nuc_masks.append(original_seq_new)
-    nuc_masks = np.array(nuc_masks)
+    nuc_masks = np.array([r.no_undesired_changes_mask for r in results.values()])
     assert (nuc_masks == nuc_masks[0]).all()
-    return nuc_masks[0], acc_delta
+    return nuc_masks[0], results
 
 
 def _stop_codon_replacement_delta_accuracy_for_series(
     ms: List[ModelToAnalyze], *, name=None, distance_out
-):
-    nuc_masks, deltas = [
-        np.array(x)
-        for x in zip(
-            *[
-                stop_codon_replacement_delta_accuracy(
-                    model_for_analysis=m, distance_out=distance_out
-                )
-                for m in tqdm.tqdm(ms, desc=name)
-            ]
-        )
-    ]
-    assert (nuc_masks == nuc_masks[0]).all()
-    return nuc_masks[0], deltas
+) -> Replace3MerResult:
+    return Replace3MerResult.merge(
+        [
+            stop_codon_replacement_delta_accuracy(
+                model_for_analysis=m, distance_out=distance_out
+            )
+            for m in tqdm.tqdm(ms, desc=name)
+        ]
+    )
 
 
 def stop_codon_replacement_delta_accuracy(
     *, model_for_analysis: ModelToAnalyze, distance_out, limit=None
-):
+) -> Replace3MerResult:
     """
     Compute the delta in accuracy when replacing codons at all 3 phases with all 64 possible codons.
 
@@ -73,14 +91,7 @@ def stop_codon_replacement_delta_accuracy(
     :param distance_out: The distance from the acceptor and donor sites to mutate the codons at
     :param limit: The number of exons to run the experiment on. If None, run on all exons
 
-    :returns: (no_undesired_changes_mask, delta_accuracies)
-
-     * no_undesired_changes_mask: Whether or not undesired changes might be caused by the
-       substitutiton. Shape (N, 2, L, 64)
-     * delta_accuracies: The delta in accuracy for all exons. Shape (N, 2, 3, 64)
-       delta_accuracies[batch_idx, distance_from_which, phase, codon] is the delta in accuracy,
-       in percentage points, when you replace the codon at distance_out from the acceptor or donor
-       (A if distance_from_which == 0, D if distance_from_which == 1) with the codon at index codon
+    :returns: the results of the experiment
     """
     original_seqs_all, yps_base, yps_mut = mutate_codons_experiment_all(
         model=model_for_analysis.model,
@@ -94,7 +105,7 @@ def stop_codon_replacement_delta_accuracy(
     ]
     yps_mut_near_exon = yps_mut[:, [0, 1], :, :, [0, 1]]
     delta = 100 * (yps_mut_near_exon.transpose(1, 0, 2, 3) - yps_base[:, :, None, None])
-    return no_undesired_changes_mask(original_seqs_all), delta
+    return Replace3MerResult(delta[None], no_undesired_changes_mask(original_seqs_all))
 
 
 def with_all_codons(original_seq, codon_start_loc):
