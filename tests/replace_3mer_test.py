@@ -1,5 +1,8 @@
+import tempfile
 import unittest
 
+from matplotlib import pyplot as plt
+from PIL import Image
 import numpy as np
 
 import frame_alignment_checks as fac
@@ -8,7 +11,7 @@ from tests.models.models import lssi_model, lssi_model_with_orf
 from tests.utils import skip_on_mac
 
 num_exons_studied = 100
-
+is_testing = True
 
 rendered_codons = draw_bases(all_3mers())
 
@@ -103,3 +106,45 @@ class TestStopCodons(unittest.TestCase):
         self.assertGreater(
             (result_w_nuc < 0).mean(), 0.9, "Results must be overwhelmingly positive"
         )
+
+
+class TestPlotting(unittest.TestCase):
+    def create_image(self):
+        with tempfile.NamedTemporaryFile(suffix=".png") as f:
+            plt.savefig(f.name)
+            return Image.open(f.name)
+
+    def check_image(self, path):
+        img_as_array = np.array(self.create_image())
+        if is_testing:
+            saved_img_as_array = np.array(Image.open(path))
+            np.testing.assert_array_equal(img_as_array, saved_img_as_array)
+        else:
+            Image.fromarray(img_as_array).save(path)
+
+    @skip_on_mac
+    def test_plot_effect_grouped(self):
+        result = fac.replace_3mer.experiment(
+            model_for_analysis=lssi_model_with_orf(),
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        fac.replace_3mer.plot_by_codon(result, result.no_undesired_changes_mask)
+        self.check_image("tests/images/replace_3mer_plot_effect_grouped.png")
+        plt.close()
+
+    @skip_on_mac
+    def test_plot_effect_grouped_nuc(self):
+        result = fac.replace_3mer.experiment(
+            model_for_analysis=lssi_model_with_orf(),
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        fac.replace_3mer.plot_by_codon(
+            result, np.ones_like(result.no_undesired_changes_mask)
+        )
+        self.check_image("tests/images/replace_3mer_plot_effect_grouped_nuc.png")
+        plt.close()
+
+    def test_is_testing(self):
+        self.assertTrue(is_testing)

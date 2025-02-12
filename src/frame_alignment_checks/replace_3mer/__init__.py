@@ -9,3 +9,5 @@ from .stop_codon_replacement import (
 from .stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy_for_multiple_series as experiments,
 )
+
+from .plotting import plot_by_codon, plot_by_codon_table, plot_effect_grouped

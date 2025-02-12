@@ -7,20 +7,18 @@ from ..plotting.colors import bar_color, line_color
 from ..utils import all_3mers, bootstrap_series, draw_bases
 
 
-def plot_by_codon(acc_delta, mask, *, ax=None):
+def plot_by_codon(result, mask, *, ax=None):
     """
     Plot the accuracy drop per codon. This is a detailed plot that shows the accuracy drop
     for each codon, averaged across seeds. The plot is split by phase. The x-axis is the codon
     and the y-axis is the accuracy drop.
 
-    :param acc_delta: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```,
-      keyed into by the model key.
-    :param mask: The mask of experiment results to be used. Second output of ```fac.replace_3mer.experiments```,
-      or you can pass all ones to include all experiments; this is useful if you want to exclude
+    :param result: The result of the experiment
+    :param mask: You can pass ``result.no_undesired_changes_mask``, this is useful if you want to exclude
       some mutations that cause undesired changes.
     :param ax: The axis to plot on. If None, a new figure is created.
     """
-    drawn, series = compute_series(acc_delta, mask)
+    drawn, series = compute_series(result, mask)
     series_mean = series.mean(0)
     lo, hi = bootstrap_series(series)
     mean_errorbar = (hi + lo) / 2
@@ -141,7 +139,6 @@ def plot_effect_grouped(acc_delta, mask, distance_out, **kwargs):
 
 
 def plot_by_codon_table(acc_delta, no_undesired_changes):
-    # TODO add documentation
     # pylint: disable=no-member
     cmap = plt.cm.viridis
     cmin, cmax = -30, 4
@@ -216,7 +213,8 @@ def compute_codon_locations(gap):
     return xs, line_pos
 
 
-def compute_series(acc_delta, mask):
+def compute_series(result, mask):
+    acc_delta = result.acc_delta
     drawn = draw_bases(all_3mers())
     reorder = np.argsort(drawn)
     drawn = np.array(drawn)[reorder]
