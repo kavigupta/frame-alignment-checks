@@ -2,12 +2,21 @@ import unittest
 
 import numpy as np
 
+import frame_alignment_checks as fac
+from frame_alignment_checks.replace_3mer.stop_codon_replacement import (
+    stop_codon_replacement_delta_accuracy,
+)
 from frame_alignment_checks.replace_3mer.stop_codon_replacement_no_undesired_changes import (
     stop_codon_no_undesired_changes_mask,
 )
 from frame_alignment_checks.utils import all_3mers, draw_bases
+from tests.models.models import lssi_model, lssi_model_with_orf
+from tests.utils import skip_on_mac
 
 num_exons_studied = 100
+
+
+rendered_codons = draw_bases(all_3mers())
 
 
 class TestNoUndesiredChangesMask(unittest.TestCase):
@@ -47,3 +56,44 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
             self.assertEqual(
                 no_undesired_changes_a[2, i], draw_bases(all_3mers()[i])[0] == "A", i
             )
+
+
+class TestStopCodons(unittest.TestCase):
+    @skip_on_mac
+    def test_lssi_doesnt_have_any_impact(self):
+        _, result = stop_codon_replacement_delta_accuracy(
+            model_for_analysis=lssi_model(), distance_out=40, limit=num_exons_studied
+        )
+        self.assertTrue((result == 0).all())
+
+    @skip_on_mac
+    def test_no_undesired_changes_effect(self):
+        no_undesired_changes, result = stop_codon_replacement_delta_accuracy(
+            model_for_analysis=lssi_model_with_orf(),
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        [phase_2, phase_0, phase_1] = (result * no_undesired_changes != 0).any((0, 1))
+        self.assertFalse(phase_2.any())
+        self.assertFalse(phase_1.any())
+        self.assertEqual(
+            {rendered_codons[i] for i in np.where(phase_0)[0]}, {"TAA", "TAG", "TGA"}
+        )
+
+    @skip_on_mac
+    def test_effect_direction(self):
+        no_undesired_changes, result = stop_codon_replacement_delta_accuracy(
+            model_for_analysis=lssi_model_with_orf(),
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        idxs = [rendered_codons.index(c) for c in ("TAA", "TAG", "TAA")]
+        no_undesired_changes, result = (
+            no_undesired_changes[..., idxs],
+            result[..., idxs],
+        )
+        result_w_nuc = result[no_undesired_changes]
+        result_w_nuc = result_w_nuc[result_w_nuc != 0]
+        self.assertGreater(
+            (result_w_nuc < 0).mean(), 0.9, "Results must be overwhelmingly positive"
+        )
