@@ -4,16 +4,23 @@ from ..compute_stop_codons import is_stop
 from ..utils import all_3mers
 
 
-def stop_codon_no_undesired_changes_mask(o_seq):
+def no_undesired_changes_mask(o_seq):
     """
+    Compute a mask of whether a 3mer mutation induces a change to the stop codon landscape
+    in any of the three phases that wasn't the one that was mutated.
+
+    E.g., TAGCCC -> TAGTGA
+    is a desired change because it adds a stop codon in phase 0, which was the mutation, but
+    ATACCC -> ATAGCC is an undesired change because it adds a stop codon in phase 1, which
+    is not the phase that was mutated.
 
     :param o_seq: The original sequence. Shape (N, 2, 9) where N is the number of exons,
-    2 is the number of locations, and 9 is the length of the original sequence at
-    the location.
+        2 is the number of locations, and 9 is the length of the original sequence at
+        the location.
 
     :return: A mask of shape (N, 2, 3, 64) where N is the number of exons, 2 is the number
-    of locations, 3 is the number of phases, and 64 is the number of codons. The mask is True
-    when the codon mutation does not introduce or remove any out of frame stop codons.
+        of locations, 3 is the number of phases, and 64 is the number of codons. The mask is True
+        when the codon mutation does not introduce or remove any out of frame stop codons.
     """
     mutated_seqs = o_seq[..., None, None, :]
     mutated_seqs = np.repeat(mutated_seqs, 64, axis=-2)

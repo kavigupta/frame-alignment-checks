@@ -17,4 +17,5 @@ This documentation assumes that you have imported the package as follows:
    models
    exons
    deletion
+   replace_3mer
    utilities

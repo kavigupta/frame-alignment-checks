@@ -1,5 +1,9 @@
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+from frame_alignment_checks.replace_3mer.stop_codon_replacement import Replace3MerResult
 
 from ..bootstrap import bootstrap
 from ..compute_stop_codons import is_stop
@@ -7,15 +11,18 @@ from ..plotting.colors import bar_color, line_color
 from ..utils import all_3mers, bootstrap_series, draw_bases
 
 
-def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
+def plot_by_codon(result: Replace3MerResult, mask: np.ndarray, *, ax=None):
     """
-    Plot the accuracy drop per codon, with the option to plot ranges of stop codons
-    and codons that are close to stop codons.
+    Plot the accuracy drop per codon. This is a detailed plot that shows the accuracy drop
+    for each codon, averaged across seeds. The plot is split by phase. The x-axis is the codon
+    and the y-axis is the accuracy drop.
 
-    :param acc_delta: The accuracy drop per codon.
-    :param mask: The mask of codons to be used
+    :param result: The result of the experiment
+    :param mask: You can pass ``result.no_undesired_changes_mask``, this is useful if you want to exclude
+      some mutations that cause undesired changes.
+    :param ax: The axis to plot on. If None, a new figure is created.
     """
-    drawn, series = compute_series(acc_delta, mask)
+    drawn, series = compute_series(result, mask)
     series_mean = series.mean(0)
     lo, hi = bootstrap_series(series)
     mean_errorbar = (hi + lo) / 2
@@ -54,9 +61,20 @@ def plot_stop_codon_acc_delta_per_codon(acc_delta, mask, *, ax=None):
     ax.set_xlim(-gap * 2, xs[-1] + gap * 2)
 
 
-def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
+def plot_effect_grouped(
+    results: Dict[str, Replace3MerResult], mask: np.ndarray, distance_out: int, **kwargs
+):
     """
-    Plot the summary of the accuracy drop per codon.
+    Plot the summary of the accuracy drop by codon, with all non-stop codons grouped together.
+    This is a summary plot that shows the accuracy drop for each codon, averaged across seeds;
+    and with all models placed on a single plot. The plot is split by model, phase, and then
+    codon.
+
+    :param acc_delta: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```
+    :param mask: The mask of experiment results to be used. First output of ```fac.replace_3mer.experiments``` or
+      all ones if you want to include all results.
+    :param distance_out: The distance out from the splice site.
+    :param kwargs: Additional arguments to pass to plt.figure.
     """
     stops_mask = is_stop(all_3mers().argmax(-1))
     codon_masks = [
@@ -68,7 +86,7 @@ def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
     plt.figure(dpi=400, tight_layout=True, **kwargs)
     centers_for_models = []
     centers_for_phases = []
-    for i, k in enumerate(acc_delta):
+    for i, k in enumerate(results):
         center_for_model = i * 3.5
         centers_for_models.append(center_for_model)
         for phase in (-1, 0, 1):
@@ -76,7 +94,7 @@ def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
             centers_for_phases.append(center_for_phase)
             means_summary = {}
             for idx, (codon_mask, label, _) in enumerate(codon_masks):
-                arr = acc_delta[k][:, :, :, phase + 1, codon_mask]
+                arr = results[k].acc_delta[:, :, :, phase + 1, codon_mask]
                 arr_mask = mask[:, :, phase + 1, codon_mask]
                 mean_by_model = (arr * arr_mask).sum((1, 2, 3)) / arr_mask.sum()
                 # stdev of the mean estimate
@@ -115,8 +133,8 @@ def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
     # ensure that ax2 has the same scale as ax1
     ax_phases.set_xlim(ax_models.get_xlim())
 
-    ax_phases.set_xticks(centers_for_models, list(acc_delta))
-    ax_models.set_xticks(centers_for_phases, ["−1", "0", "+1"] * len(acc_delta))
+    ax_phases.set_xticks(centers_for_models, list(results))
+    ax_models.set_xticks(centers_for_phases, ["−1", "0", "+1"] * len(results))
     # 3 columns, lower right, small font
     ax_models.legend(loc="lower right", fontsize="small")
     ax_models.set_ylabel(
@@ -125,7 +143,16 @@ def plot_stop_codon_acc_delta_summary(acc_delta, mask, distance_out, **kwargs):
     ax_models.grid(axis="y")
 
 
-def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
+def plot_by_codon_table(
+    results: Dict[str, Replace3MerResult], no_undesired_changes: np.ndarray
+):
+    """
+    Plots the same information as plot_by_codon, but in a table format.
+
+    :param results: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```.
+    :param no_undesired_changes: The mask of experiment results to be used.
+      First output of ```fac.replace_3mer.experiments```.
+    """
     # pylint: disable=no-member
     cmap = plt.cm.viridis
     cmin, cmax = -30, 4
@@ -136,8 +163,8 @@ def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
     ys = ys * (1 + overall_gap)
     xmids_all = []
     x = x_start
-    for k in acc_delta:
-        names, values = compute_series(acc_delta[k], no_undesired_changes)
+    for k in results:
+        names, values = compute_series(results[k], no_undesired_changes)
         values = values.mean(0).T
         for y, vs in zip(ys, values):
             xmids = []
@@ -176,9 +203,9 @@ def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
 
     ax_phases.set_xlim(ax_models.get_xlim())
     ax_phases.set_xticks(
-        np.array(xmids_all).flatten(), ["−1", "0", "+1"] * len(acc_delta)
+        np.array(xmids_all).flatten(), ["−1", "0", "+1"] * len(results)
     )
-    ax_models.set_xticks(np.mean(xmids_all, 1), list(acc_delta))
+    ax_models.set_xticks(np.mean(xmids_all, 1), list(results))
     ax_models.tick_params(axis="x", top=False)
 
     plt.colorbar(
@@ -187,6 +214,7 @@ def plot_stop_codon_acc_delta_summary_as_image(acc_delta, no_undesired_changes):
         values=np.linspace(cmin, cmax, 100),
         # small width
         fraction=0.02,
+        ax=ax_phases,
     )
     # monospace font for yticks
     for tick in ax_models.get_yticklabels():
@@ -200,7 +228,8 @@ def compute_codon_locations(gap):
     return xs, line_pos
 
 
-def compute_series(acc_delta, mask):
+def compute_series(result, mask):
+    acc_delta = result.acc_delta
     drawn = draw_bases(all_3mers())
     reorder = np.argsort(drawn)
     drawn = np.array(drawn)[reorder]
