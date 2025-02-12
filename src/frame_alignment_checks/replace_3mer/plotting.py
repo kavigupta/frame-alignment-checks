@@ -143,7 +143,15 @@ def plot_effect_grouped(
     ax_models.grid(axis="y")
 
 
-def plot_by_codon_table(acc_delta, no_undesired_changes):
+def plot_by_codon_table(
+    results: Dict[str, Replace3MerResult], no_undesired_changes: np.ndarray
+):
+    """
+    Plots the same information as plot_by_codon, but in a table format.
+
+    :param results: The accuracy drop per codon. Second output of ```fac.replace_3mer.experiments```.
+    :param no_undesired_changes: The mask of experiment results to be used. First output of ```fac.replace_3mer.experiments```.
+    """
     # pylint: disable=no-member
     cmap = plt.cm.viridis
     cmin, cmax = -30, 4
@@ -154,8 +162,8 @@ def plot_by_codon_table(acc_delta, no_undesired_changes):
     ys = ys * (1 + overall_gap)
     xmids_all = []
     x = x_start
-    for k in acc_delta:
-        names, values = compute_series(acc_delta[k], no_undesired_changes)
+    for k in results:
+        names, values = compute_series(results[k], no_undesired_changes)
         values = values.mean(0).T
         for y, vs in zip(ys, values):
             xmids = []
@@ -194,9 +202,9 @@ def plot_by_codon_table(acc_delta, no_undesired_changes):
 
     ax_phases.set_xlim(ax_models.get_xlim())
     ax_phases.set_xticks(
-        np.array(xmids_all).flatten(), ["−1", "0", "+1"] * len(acc_delta)
+        np.array(xmids_all).flatten(), ["−1", "0", "+1"] * len(results)
     )
-    ax_models.set_xticks(np.mean(xmids_all, 1), list(acc_delta))
+    ax_models.set_xticks(np.mean(xmids_all, 1), list(results))
     ax_models.tick_params(axis="x", top=False)
 
     plt.colorbar(
@@ -205,6 +213,7 @@ def plot_by_codon_table(acc_delta, no_undesired_changes):
         values=np.linspace(cmin, cmax, 100),
         # small width
         fraction=0.02,
+        ax=ax_models,
     )
     # monospace font for yticks
     for tick in ax_models.get_yticklabels():

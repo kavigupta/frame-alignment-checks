@@ -132,52 +132,64 @@ class TestPlotting(unittest.TestCase):
             Image.fromarray(img_as_array).save(path)
         plt.close()
 
-    @skip_on_mac
-    def test_plot_by_codon(self):
-        result = fac.replace_3mer.experiment(
+    def result_orf(self):
+        return fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
             distance_out=40,
             limit=num_exons_studied,
         )
+
+    def result_both(self):
+        nuc, result = fac.replace_3mer.experiments(
+            models={
+                "LSSI": [lssi_model()],
+                "LSSI_ORF": [lssi_model_with_orf()],
+            },
+            distance_out=40,
+            limit=num_exons_studied,
+        )
+        return nuc, result
+
+    @skip_on_mac
+    def test_plot_by_codon(self):
+        result = self.result_orf()
         fac.replace_3mer.plot_by_codon(result, result.no_undesired_changes_mask)
         self.check_image()
 
     @skip_on_mac
     def test_plot_by_codon_nuc(self):
-        result = fac.replace_3mer.experiment(
-            model_for_analysis=lssi_model_with_orf(),
-            distance_out=40,
-            limit=num_exons_studied,
-        )
+        result = self.result_orf()
         fac.replace_3mer.plot_by_codon(
             result, np.ones_like(result.no_undesired_changes_mask)
         )
         self.check_image()
 
     @skip_on_mac
+    def test_plot_by_codon_table(self):
+        plt.figure(figsize=(10, 15), tight_layout=True)
+        nuc, results = self.result_both()
+        fac.replace_3mer.plot_by_codon_table(results, nuc)
+        self.check_image()
+
+    @skip_on_mac
+    def test_plot_by_codon_table_nuc(self):
+        plt.figure(figsize=(10, 15), tight_layout=True)
+        nuc, results = self.result_both()
+        fac.replace_3mer.plot_by_codon_table(results, np.ones_like(nuc))
+        self.check_image()
+
+    @skip_on_mac
     def test_plot_effect_grouped(self):
-        nuc, result = fac.replace_3mer.experiments(
-            models={
-                "LSSI": [lssi_model()],
-                "LSSI_ORF": [lssi_model_with_orf()],
-            },
-            distance_out=40,
-            limit=num_exons_studied,
-        )
-        fac.replace_3mer.plot_effect_grouped(result, nuc, distance_out=40)
+        nuc, results = self.result_both()
+        fac.replace_3mer.plot_effect_grouped(results, nuc, distance_out=40)
         self.check_image()
 
     @skip_on_mac
     def test_plot_effect_grouped_nuc(self):
-        nuc, result = fac.replace_3mer.experiments(
-            models={
-                "LSSI": [lssi_model()],
-                "LSSI_ORF": [lssi_model_with_orf()],
-            },
-            distance_out=40,
-            limit=num_exons_studied,
+        nuc, results = self.result_both()
+        fac.replace_3mer.plot_effect_grouped(
+            results, np.ones_like(nuc), distance_out=40
         )
-        fac.replace_3mer.plot_effect_grouped(result, np.ones_like(nuc), distance_out=40)
         self.check_image()
 
     def test_is_testing(self):
