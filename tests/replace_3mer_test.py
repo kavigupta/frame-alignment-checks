@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 
-import frame_alignment_checks as fac
 from frame_alignment_checks.replace_3mer.stop_codon_replacement import (
     stop_codon_replacement_delta_accuracy,
 )
