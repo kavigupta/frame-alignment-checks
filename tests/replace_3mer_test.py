@@ -6,14 +6,13 @@ from matplotlib import pyplot as plt
 from PIL import Image
 
 import frame_alignment_checks as fac
-from frame_alignment_checks.utils import all_3mers, draw_bases
 from tests.models.models import lssi_model, lssi_model_with_orf
 from tests.utils import skip_on_mac
 
 num_exons_studied = 100
 is_testing = True
 
-rendered_codons = draw_bases(all_3mers())
+rendered_codons = fac.utils.draw_bases(fac.utils.all_3mers())
 
 
 class TestNoUndesiredChangesMask(unittest.TestCase):
@@ -45,13 +44,13 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
         for i in range(64):
             self.assertEqual(
                 no_undesired_changes_a[1, i],
-                draw_bases(all_3mers()[i])[:2] in {"GA", "AG", "AA"},
+                rendered_codons[i][:2] in {"GA", "AG", "AA"},
                 i,
             )
         # phase 1 of A has undesired changes iff the first nucleotide is not A
         for i in range(64):
             self.assertEqual(
-                no_undesired_changes_a[2, i], draw_bases(all_3mers()[i])[0] == "A", i
+                no_undesired_changes_a[2, i], rendered_codons[i][0] == "A", i
             )
 
 

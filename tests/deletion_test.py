@@ -1,11 +1,6 @@
 import unittest
 
 import frame_alignment_checks as fac
-from frame_alignment_checks.deletion import (
-    basic_deletion_experiment_affected_splice_sites as aff,
-)
-from frame_alignment_checks.deletion import basic_deletion_experiment_locations as locs
-from frame_alignment_checks.deletion import num_open_reading_frames
 from tests.models.models import lssi_model, lssi_model_with_orf
 from tests.utils import skip_on_mac
 
@@ -31,8 +26,8 @@ class TestDeletion(unittest.TestCase):
             print(matr)
             self.assertEqual(matr.shape, (4, 4))
             if num_deletions % 3 == 0:
-                for i in range(len(locs)):
-                    for j in range(len(aff)):
+                for i in range(len(fac.deletion.mutation_locations)):
+                    for j in range(len(fac.deletion.affected_splice_sites)):
                         self.assertLess(abs(matr[i, j]), 7.5e-2)
             else:
                 self.check_matrix_non_multiple(matr)
@@ -42,7 +37,9 @@ class TestDeletion(unittest.TestCase):
         result = fac.deletion.experiment(
             lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
         )
-        num_rf_each = num_open_reading_frames(distance_out=40, limit=num_exons_studied)
+        num_rf_each = fac.deletion.num_open_reading_frames(
+            distance_out=40, limit=num_exons_studied
+        )
         for num_rf in range(1 + 3):
             mem = result.mean_effect_masked(num_rf_each == num_rf)
             self.assertEqual(mem.shape, (1, 9))
@@ -76,21 +73,38 @@ class TestDeletion(unittest.TestCase):
                 self.assertLess(x, -5e-2)
 
     def check_matrix_non_multiple(self, matr):
-        for i, deletion_location in enumerate(locs):
-            for j, affected_splice_site in enumerate(aff):
+        for i, deletion_location in enumerate(fac.deletion.mutation_locations):
+            for j, fac.deletion.affected_splice_sitesected_splice_site in enumerate(
+                fac.deletion.affected_splice_sites
+            ):
                 if deletion_location in [
                     "left of A",
                     "right of D",
-                ] or affected_splice_site in ["PD", "NA"]:
+                ] or fac.deletion.affected_splice_sitesected_splice_site in [
+                    "PD",
+                    "NA",
+                ]:
                     self.assertLess(abs(matr[i, j]), 2.5e-2)
                 else:
                     self.assertLess(matr[i, j], -2e-2)
         nearer_splice_site = (
-            matr[locs.index("right of A"), aff.index("A")]
-            + matr[locs.index("left of D"), aff.index("D")]
+            matr[
+                fac.deletion.mutation_locations.index("right of A"),
+                fac.deletion.affected_splice_sites.index("A"),
+            ]
+            + matr[
+                fac.deletion.mutation_locations.index("left of D"),
+                fac.deletion.affected_splice_sites.index("D"),
+            ]
         )
         farther_splice_site = (
-            matr[locs.index("right of A"), aff.index("D")]
-            + matr[locs.index("left of D"), aff.index("A")]
+            matr[
+                fac.deletion.mutation_locations.index("right of A"),
+                fac.deletion.affected_splice_sites.index("D"),
+            ]
+            + matr[
+                fac.deletion.mutation_locations.index("left of D"),
+                fac.deletion.affected_splice_sites.index("A"),
+            ]
         )
         self.assertLess(abs(farther_splice_site), abs(nearer_splice_site))
