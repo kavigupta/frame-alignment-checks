@@ -14,7 +14,6 @@ from .real_experiments.experiment_results import (
     RealExperimentResultForModel,
 )
 from .real_experiments.math import k_closest_index_array
-from .real_experiments.plot_masks import plot_raw_real_experiment_results
 from .real_experiments.plot_summary import plot_real_experiment_summary
 from .statistics.handedness_logos import (
     phase_handedness_plot_relative_logos,
