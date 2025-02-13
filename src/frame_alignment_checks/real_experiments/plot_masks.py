@@ -77,18 +77,33 @@ def plot_for_masks(
 
 
 def plot_raw_real_experiment_results(
-    mask_overall_title,
+    title,
     *,
     er_by_model: FullRealExperimentResult,
     xlabel,
     axs,
 ):
+    """
+    Plots the raw real experiment results for each model and mask. By "raw" we mean
+    all the data points, rather than computing quantiles.
+
+    Each model is plotted on its own axis, as provided in ``axs``.
+
+    We also provide a binned estimator of the expected prediction value given the actual PSI.
+    We furthermore label each mask with the controlled mean percentile of the predicted PSI
+    given th eactual PSI.
+
+    :param title: The title of the plot.
+    :param er_by_model: The experiment results by model.
+    :param xlabel: The label for the x-axis (the actual values)
+    :param axs: The axes to plot on.
+    """
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
     mean_quantiles = er_by_model.mean_quantiles_each()
     for ax, name in zip(axs.flatten(), er_by_model.er_by_model):
         plot_for_masks(
             ax,
-            f"{mask_overall_title} - {name}",
+            f"{title} - {name}",
             xlabel,
             er_by_model.er_by_model[name],
             er_by_model.masks_each,

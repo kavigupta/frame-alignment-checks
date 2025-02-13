@@ -18,4 +18,5 @@ This documentation assumes that you have imported the package as follows:
    exons
    deletion
    replace_3mer
+   real_experiment
    utilities
