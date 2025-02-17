@@ -65,12 +65,12 @@ def plot_deletion_effect(deltas_by_model, distance_out):
         # delta = delta[:, :, :, [1, 2]]  # only the A and D
         xs = 1 + np.arange(9)
         for i, dl in enumerate(mutation_locations):
-            for j, loc in enumerate("AD"):
+            for j, loc in enumerate(["3'SS", "5'SS"]):
                 ys = 100 * delta.mean_effect_series(dl, loc)
                 ax.plot(
                     xs,
                     ys.mean(0),
-                    label=f"{loc}; deleted {dl}",
+                    label=f"{loc}; del. {dl}",
                     color=line_color(i),
                     marker=".",
                     linestyle=["-", "--"][j],
