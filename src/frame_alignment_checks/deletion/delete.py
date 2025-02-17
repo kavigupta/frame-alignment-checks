@@ -14,13 +14,13 @@ from ..utils import collect_windows, device_of, extract_center, stable_hash_cach
 from .deletion_repair import repair_strategy_types
 
 mutation_locations = [
-    "left of A",
-    "right of A",
-    "left of D",
-    "right of D",
+    "u.s. of 3'SS",
+    "d.s. of 3'SS",
+    "u.s. of 5'SS",
+    "d.s. of 5'SS",
 ]
 
-affected_splice_sites = ["PD", "A", "D", "NA"]
+affected_splice_sites = ["P5'SS", "3'SS", "5'SS", "N3'SS"]
 
 
 @dataclass
@@ -82,8 +82,8 @@ class DeletionAccuracyDeltaResult:
     def mean_effect_masked(
         self,
         mask=None,
-        mutation_locations_to_use: Tuple[str] = ("right of A", "left of D"),
-        affected_splice_sites_to_use: Tuple[str] = ("A", "D"),
+        mutation_locations_to_use: Tuple[str] = ("d.s. of 3'SS", "u.s. of 5'SS"),
+        affected_splice_sites_to_use: Tuple[str] = ("3'SS", "5'SS"),
     ) -> np.ndarray:
         """
         Compute the mean effect of deletions on the given deletion locations and splice sites, with a mask.

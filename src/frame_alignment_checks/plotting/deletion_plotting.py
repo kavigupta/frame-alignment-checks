@@ -10,7 +10,7 @@ from .colors import bar_color, line_color
 def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
     """
     Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
-    the deletions in each region (left of A, right of A, left of D, right of D) and
+    the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
     the columns are the affected splice sites (PD, A, D, NA).
     """
     _, axs = plt.subplots(

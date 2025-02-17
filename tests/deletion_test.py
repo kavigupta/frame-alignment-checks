@@ -60,11 +60,11 @@ class TestDeletion(unittest.TestCase):
         result = fac.deletion.experiment(
             lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
         )
-        mes = result.mean_effect_series("left of A", "A")
+        mes = result.mean_effect_series("u.s. of 3'SS", "3'SS")
         self.assertEqual(mes.shape, (1, 9))
         for x in mes[0]:
             self.assertLess(abs(x), 5e-2)
-        mes = result.mean_effect_series("right of A", "A")
+        mes = result.mean_effect_series("d.s. of 3'SS", "3'SS")
         self.assertEqual(mes.shape, (1, 9))
         for num_deletions, x in enumerate(mes[0], 1):
             if num_deletions % 3 == 0:
@@ -78,33 +78,33 @@ class TestDeletion(unittest.TestCase):
                 fac.deletion.affected_splice_sites
             ):
                 if deletion_location in [
-                    "left of A",
-                    "right of D",
+                    "u.s. of 3'SS",
+                    "d.s. of 5'SS",
                 ] or fac.deletion.affected_splice_sitesected_splice_site in [
-                    "PD",
-                    "NA",
+                    "P5'SS",
+                    "N3'SS",
                 ]:
                     self.assertLess(abs(matr[i, j]), 2.5e-2)
                 else:
                     self.assertLess(matr[i, j], -2e-2)
         nearer_splice_site = (
             matr[
-                fac.deletion.mutation_locations.index("right of A"),
-                fac.deletion.affected_splice_sites.index("A"),
+                fac.deletion.mutation_locations.index("d.s. of 3'SS"),
+                fac.deletion.affected_splice_sites.index("3'SS"),
             ]
             + matr[
-                fac.deletion.mutation_locations.index("left of D"),
-                fac.deletion.affected_splice_sites.index("D"),
+                fac.deletion.mutation_locations.index("u.s. of 5'SS"),
+                fac.deletion.affected_splice_sites.index("5'SS"),
             ]
         )
         farther_splice_site = (
             matr[
-                fac.deletion.mutation_locations.index("right of A"),
-                fac.deletion.affected_splice_sites.index("D"),
+                fac.deletion.mutation_locations.index("d.s. of 3'SS"),
+                fac.deletion.affected_splice_sites.index("5'SS"),
             ]
             + matr[
-                fac.deletion.mutation_locations.index("left of D"),
-                fac.deletion.affected_splice_sites.index("A"),
+                fac.deletion.mutation_locations.index("u.s. of 5'SS"),
+                fac.deletion.affected_splice_sites.index("3'SS"),
             ]
         )
         self.assertLess(abs(farther_splice_site), abs(nearer_splice_site))
