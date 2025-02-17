@@ -106,8 +106,8 @@ def plot_deletion_effect_by_whether_stop_codon(
         delta = deltas_by_model[name]
         conditions = {
             "all": np.ones_like(num_frames_open, dtype=bool),
-            "at least one phase open": num_frames_open > 0,
-            "all phases closed": num_frames_open == 0,
+            "at least one r.f. open": num_frames_open > 0,
+            "all r.f.'s closed": num_frames_open == 0,
         }
         for color_idx, condition in enumerate(conditions):
             mask = conditions[condition]
