@@ -10,7 +10,7 @@ from .colors import bar_color, line_color
 def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
     """
     Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
-    the deletions in each region (left of A, right of A, left of D, right of D) and
+    the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
     the columns are the affected splice sites (PD, A, D, NA).
     """
     _, axs = plt.subplots(
@@ -65,12 +65,12 @@ def plot_deletion_effect(deltas_by_model, distance_out):
         # delta = delta[:, :, :, [1, 2]]  # only the A and D
         xs = 1 + np.arange(9)
         for i, dl in enumerate(mutation_locations):
-            for j, loc in enumerate("AD"):
+            for j, loc in enumerate(["3'SS", "5'SS"]):
                 ys = 100 * delta.mean_effect_series(dl, loc)
                 ax.plot(
                     xs,
                     ys.mean(0),
-                    label=f"{loc}; deleted {dl}",
+                    label=f"{loc}; del. {dl}",
                     color=line_color(i),
                     marker=".",
                     linestyle=["-", "--"][j],
