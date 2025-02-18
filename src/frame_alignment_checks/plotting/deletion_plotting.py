@@ -7,7 +7,7 @@ from ..utils import bootstrap_series
 from .colors import bar_color, line_color
 
 
-def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
+def plot_deletion_effect_matrix(deltas, distance_out, num_deletions, height=4):
     """
     Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
     the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
@@ -16,15 +16,17 @@ def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
     _, axs = plt.subplots(
         1,
         len(deltas),
-        figsize=(3.25 * len(deltas), 4),
+        figsize=(height * 0.8 * len(deltas), height),
         sharey=True,
+        tight_layout=True,
     )
 
     delta_matr = {
         name: delta.mean_effect_matrix(num_deletions) for name, delta in deltas.items()
     }
+    min_clim = -0.1
     for name, ax in zip(deltas, axs):
-        im = ax.imshow(delta_matr[name] * 100)
+        im = ax.imshow(delta_matr[name] * 100, vmin=min_clim * 100, vmax=0)
         # text in each box
         for i in range(4):
             for j in range(4):
@@ -43,7 +45,7 @@ def plot_deletion_effect_matrix(deltas, distance_out, num_deletions):
         ax.set_xticks(np.arange(4), affected_splice_sites)
         ax.set_yticks(np.arange(4), mutation_locations)
         ax.set_title(name)
-        plt.colorbar(im, ax=ax)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     plt.suptitle(f"Starting at {distance_out}; {num_deletions} deletions")
 
 
