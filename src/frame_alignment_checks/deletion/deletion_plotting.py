@@ -73,7 +73,7 @@ def plot_exon_effects_by_orf(
     :param distance_out: The distance out.
     :param axs: The axes to plot on.
     """
-    num_frames_open = num_open_reading_frames(distance_out)
+    num_frames_open = num_open_reading_frames(distance_out, limit=list(deltas_by_model.values())[0].num_exons)
     if axs is None:
         _, axs = plt.subplots(
             1,

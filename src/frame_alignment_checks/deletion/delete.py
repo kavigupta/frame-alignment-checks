@@ -36,6 +36,10 @@ class DeletionAccuracyDeltaResult:
 
     raw_data: np.ndarray
 
+    @property
+    def num_exons(self) -> int:
+        return self.raw_data.shape[1]
+
     @classmethod
     def concatenate(
         cls, results: List["DeletionAccuracyDeltaResult"]
