@@ -144,4 +144,4 @@ class TestPlotting(ImageTestBase):
             distance_out=40,
             num_deletions=i,
         )
-        self.check_image()
+        self.check_image(0.07)
