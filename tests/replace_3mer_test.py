@@ -165,6 +165,3 @@ class TestPlotting(ImageTestBase):
             results, np.ones_like(nuc), distance_out=40
         )
         self.check_image()
-
-    def test_is_testing(self):
-        self.assertTrue(is_testing)
