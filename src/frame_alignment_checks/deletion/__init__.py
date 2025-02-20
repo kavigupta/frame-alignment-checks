@@ -1,3 +1,7 @@
+from .deletion_plotting import (
+    plot_matrix_at_site,
+    plot_by_deletion_loc_and_affected_site,
+)
 from .delete import DeletionAccuracyDeltaResult
 from .delete import accuracy_delta_given_deletion_experiment as experiment
 from .delete import (

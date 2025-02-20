@@ -1,17 +1,36 @@
+from typing import Dict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..deletion.delete import affected_splice_sites, mutation_locations
-from ..deletion.deletion_num_stops import num_open_reading_frames
+from .delete import (
+    DeletionAccuracyDeltaResult,
+    affected_splice_sites,
+    mutation_locations,
+)
+from .deletion_num_stops import num_open_reading_frames
 from ..utils import bootstrap_series
-from .colors import bar_color, line_color
+from ..plotting.colors import bar_color, line_color
 
 
-def plot_deletion_effect_matrix(deltas, distance_out, num_deletions, height=4):
+def plot_matrix_at_site(
+    deltas: Dict[str, DeletionAccuracyDeltaResult],
+    distance_out: int,
+    num_deletions: int,
+    height=4,
+):
     """
     Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
     the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
-    the columns are the affected splice sites (PD, A, D, NA).
+    the columns are the affected splice sites (P5'SS, 3'SS, 5'SS, N3'SS).
+
+    The values are the drop in accuracy when deleting the given region and splice site.
+
+    The values are in percentage points.
+
+    :param deltas: The deltas by model.
+    :param distance_out: The distance out.
+    :param num_deletions: The number of deletions.
+    :param height: The height of the figure, in inches.
     """
     _, axs = plt.subplots(
         1,
@@ -49,9 +68,16 @@ def plot_deletion_effect_matrix(deltas, distance_out, num_deletions, height=4):
     plt.suptitle(f"Starting at {distance_out}; {num_deletions} deletions")
 
 
-def plot_deletion_effect(deltas_by_model, distance_out):
+def plot_by_deletion_loc_and_affected_site(
+    deltas_by_model: Dict[str, DeletionAccuracyDeltaResult], distance_out: int
+):
     """
-    Plot the deletions for all models.
+    Plot the effect of deletions on the accuracy of the model. This is plotted
+    for 3'SS and 5'SS separately, for all 4 deletion locations, and for all
+    deletion lengths.
+
+    :param deltas_by_model: The deltas by model.
+    :param distance_out: The distance out.
     """
     _, axs = plt.subplots(
         1,
@@ -89,12 +115,21 @@ def plot_deletion_effect(deltas_by_model, distance_out):
     plt.suptitle(f"Starting at {distance_out}")
 
 
-def plot_deletion_effect_by_whether_stop_codon(
-    deltas_by_model,
-    distance_out,
+def plot_exon_effects_by_orf(
+    deltas_by_model: Dict[str, DeletionAccuracyDeltaResult],
+    distance_out: int,
     *,
     axs=None,
 ):
+    """
+    Plot the effect of deletions on the accuracy of the model. This is plotted
+    for 3'SS and 5'SS combined into a single effect, for both the exonic deletions
+    (all 4 combinations, averaged).
+
+    :param deltas_by_model: The deltas by model.
+    :param distance_out: The distance out.
+    :param axs: The axes to plot on.
+    """
     num_frames_open = num_open_reading_frames(distance_out)
     if axs is None:
         _, axs = plt.subplots(

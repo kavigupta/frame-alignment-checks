@@ -7,7 +7,7 @@ from .phase_handedness.compute_self_agreement import (
     phase_handedness_self_agreement_score,
     phase_handedness_self_agreement_score_for_multiple_series,
 )
-from .plotting import deletion_plotting
+from .deletion import deletion_plotting
 from .plotting.multi_seed_experiment import plot_multi_seed_experiment
 from .real_experiments.experiment_results import (
     FullRealExperimentResult,
