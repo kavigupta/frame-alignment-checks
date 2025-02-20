@@ -1,15 +1,17 @@
 from typing import Dict
+
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ..plotting.colors import bar_color, line_color
+from ..utils import bootstrap_series
 from .delete import (
     DeletionAccuracyDeltaResult,
     affected_splice_sites,
     mutation_locations,
 )
 from .deletion_num_stops import num_open_reading_frames
-from ..utils import bootstrap_series
-from ..plotting.colors import bar_color, line_color
+
 
 def plot_by_deletion_loc_and_affected_site(
     deltas_by_model: Dict[str, DeletionAccuracyDeltaResult], distance_out: int
@@ -73,7 +75,9 @@ def plot_exon_effects_by_orf(
     :param distance_out: The distance out.
     :param axs: The axes to plot on.
     """
-    num_frames_open = num_open_reading_frames(distance_out, limit=list(deltas_by_model.values())[0].num_exons)
+    num_frames_open = num_open_reading_frames(
+        distance_out, limit=list(deltas_by_model.values())[0].num_exons
+    )
     if axs is None:
         _, axs = plt.subplots(
             1,

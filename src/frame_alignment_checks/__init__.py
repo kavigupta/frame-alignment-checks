@@ -1,13 +1,13 @@
 from . import deletion, replace_3mer
 from .coding_exon import CodingExon
 from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
+from .deletion import deletion_plotting
 from .deletion.delete import affected_splice_sites, mutation_locations
 from .models import ModelToAnalyze
 from .phase_handedness.compute_self_agreement import (
     phase_handedness_self_agreement_score,
     phase_handedness_self_agreement_score_for_multiple_series,
 )
-from .deletion import deletion_plotting
 from .plotting.multi_seed_experiment import plot_multi_seed_experiment
 from .real_experiments.experiment_results import (
     FullRealExperimentResult,
