@@ -11,63 +11,6 @@ from .deletion_num_stops import num_open_reading_frames
 from ..utils import bootstrap_series
 from ..plotting.colors import bar_color, line_color
 
-
-def plot_matrix_at_site(
-    deltas: Dict[str, DeletionAccuracyDeltaResult],
-    distance_out: int,
-    num_deletions: int,
-    height=4,
-):
-    """
-    Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
-    the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
-    the columns are the affected splice sites (P5'SS, 3'SS, 5'SS, N3'SS).
-
-    The values are the drop in accuracy when deleting the given region and splice site.
-
-    The values are in percentage points.
-
-    :param deltas: The deltas by model.
-    :param distance_out: The distance out.
-    :param num_deletions: The number of deletions.
-    :param height: The height of the figure, in inches.
-    """
-    _, axs = plt.subplots(
-        1,
-        len(deltas),
-        figsize=(height * 0.8 * len(deltas), height),
-        sharey=True,
-        tight_layout=True,
-    )
-
-    delta_matr = {
-        name: delta.mean_effect_matrix(num_deletions) for name, delta in deltas.items()
-    }
-    min_clim = -0.1
-    for name, ax in zip(deltas, axs):
-        im = ax.imshow(delta_matr[name] * 100, vmin=min_clim * 100, vmax=0)
-        # text in each box
-        for i in range(4):
-            for j in range(4):
-                limits = np.min(delta_matr[name]), np.max(delta_matr[name])
-                value_relative_to_limits = (delta_matr[name][i, j] - limits[0]) / (
-                    limits[1] - limits[0]
-                )
-                ax.text(
-                    j,
-                    i,
-                    f"{delta_matr[name][i, j] * 100:.1f}",
-                    ha="center",
-                    va="center",
-                    color="black" if value_relative_to_limits > 0.5 else "white",
-                )
-        ax.set_xticks(np.arange(4), affected_splice_sites)
-        ax.set_yticks(np.arange(4), mutation_locations)
-        ax.set_title(name)
-        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    plt.suptitle(f"Starting at {distance_out}; {num_deletions} deletions")
-
-
 def plot_by_deletion_loc_and_affected_site(
     deltas_by_model: Dict[str, DeletionAccuracyDeltaResult], distance_out: int
 ):
@@ -165,3 +108,59 @@ def plot_exon_effects_by_orf(
         ax.grid()
     axs[-1].legend()
     axs[0].set_ylabel("Drop in accuracy when deleting")
+
+
+def plot_matrix_at_site(
+    deltas: Dict[str, DeletionAccuracyDeltaResult],
+    distance_out: int,
+    num_deletions: int,
+    height=4,
+):
+    """
+    Plot a matrix of effects for each model. This is a 4x4 matrix where the rows are
+    the deletions in each region (u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS) and
+    the columns are the affected splice sites (P5'SS, 3'SS, 5'SS, N3'SS).
+
+    The values are the drop in accuracy when deleting the given region and splice site.
+
+    The values are in percentage points.
+
+    :param deltas: The deltas by model.
+    :param distance_out: The distance out.
+    :param num_deletions: The number of deletions.
+    :param height: The height of the figure, in inches.
+    """
+    _, axs = plt.subplots(
+        1,
+        len(deltas),
+        figsize=(height * 0.8 * len(deltas), height),
+        sharey=True,
+        tight_layout=True,
+    )
+
+    delta_matr = {
+        name: delta.mean_effect_matrix(num_deletions) for name, delta in deltas.items()
+    }
+    min_clim = -0.1
+    for name, ax in zip(deltas, axs):
+        im = ax.imshow(delta_matr[name] * 100, vmin=min_clim * 100, vmax=0)
+        # text in each box
+        for i in range(4):
+            for j in range(4):
+                limits = np.min(delta_matr[name]), np.max(delta_matr[name])
+                value_relative_to_limits = (delta_matr[name][i, j] - limits[0]) / (
+                    limits[1] - limits[0]
+                )
+                ax.text(
+                    j,
+                    i,
+                    f"{delta_matr[name][i, j] * 100:.1f}",
+                    ha="center",
+                    va="center",
+                    color="black" if value_relative_to_limits > 0.5 else "white",
+                )
+        ax.set_xticks(np.arange(4), affected_splice_sites)
+        ax.set_yticks(np.arange(4), mutation_locations)
+        ax.set_title(name)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    plt.suptitle(f"Starting at {distance_out}; {num_deletions} deletions")
