@@ -1,4 +1,5 @@
 from .deletion_plotting import (
+    plot_exon_effects_by_orf,
     plot_matrix_at_site,
     plot_by_deletion_loc_and_affected_site,
 )
