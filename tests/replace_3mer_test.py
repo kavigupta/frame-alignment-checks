@@ -1,16 +1,13 @@
-import os
 import unittest
 
 import numpy as np
 from matplotlib import pyplot as plt
-from PIL import Image
 
 import frame_alignment_checks as fac
 from tests.models.models import lssi_model, lssi_model_with_orf
-from tests.utils import skip_on_mac
+from tests.utils import ImageTestBase, skip_on_mac
 
 num_exons_studied = 100
-is_testing = True
 
 rendered_codons = fac.utils.draw_bases(fac.utils.all_3mers())
 
@@ -107,31 +104,7 @@ class TestStopCodons(unittest.TestCase):
         )
 
 
-class TestPlotting(unittest.TestCase):
-
-    def setUp(self):
-        self.count = 0
-
-    def create_image(self):
-        plt.savefig(".temp.png")
-        with Image.open(".temp.png") as i:
-            result = np.array(i)
-        os.remove(".temp.png")
-        return result
-
-    def check_image(self):
-        path = f"tests/images/{self.id()}_{self.count}.png"
-        self.count += 1
-        img_as_array = self.create_image()
-        if is_testing:
-            saved_img_as_array = np.array(Image.open(path))
-            # tolerate mismatched elements up to 1.5% of the total
-            if (img_as_array != saved_img_as_array).mean() > 0.015:
-                # this will fail, it's just for the error message
-                np.testing.assert_array_equal(img_as_array, saved_img_as_array)
-        else:
-            Image.fromarray(img_as_array).save(path)
-        plt.close()
+class TestPlotting(ImageTestBase):
 
     def result_orf(self):
         return fac.replace_3mer.experiment(
@@ -192,6 +165,3 @@ class TestPlotting(unittest.TestCase):
             results, np.ones_like(nuc), distance_out=40
         )
         self.check_image()
-
-    def test_is_testing(self):
-        self.assertTrue(is_testing)
