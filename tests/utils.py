@@ -43,3 +43,6 @@ class ImageTestBase(unittest.TestCase):
         else:
             Image.fromarray(img_as_array).save(path)
         plt.close()
+
+    def test_is_testing(self):
+        self.assertTrue(is_testing)
