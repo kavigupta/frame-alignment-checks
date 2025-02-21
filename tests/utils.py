@@ -29,14 +29,14 @@ class ImageTestBase(unittest.TestCase):
         os.remove(".temp.png")
         return result
 
-    def check_image(self):
+    def check_image(self, min_delta=0.015):
         path = f"tests/images/{self.id()}_{self.count}.png"
         self.count += 1
         img_as_array = self.create_image()
         if is_testing:
             saved_img_as_array = np.array(Image.open(path))
             # tolerate mismatched elements up to 1.5% of the total
-            if (img_as_array != saved_img_as_array).mean() > 0.015:
+            if (img_as_array != saved_img_as_array).mean() > min_delta:
                 # this will fail, it's just for the error message
                 np.testing.assert_array_equal(img_as_array, saved_img_as_array)
         else:

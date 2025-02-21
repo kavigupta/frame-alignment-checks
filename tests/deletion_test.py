@@ -1,8 +1,10 @@
 import unittest
 
+from parameterized import parameterized
+
 import frame_alignment_checks as fac
 from tests.models.models import lssi_model, lssi_model_with_orf
-from tests.utils import skip_on_mac
+from tests.utils import ImageTestBase, skip_on_mac
 
 num_exons_studied = 500
 
@@ -108,3 +110,38 @@ class TestDeletion(unittest.TestCase):
             ]
         )
         self.assertLess(abs(farther_splice_site), abs(nearer_splice_site))
+
+
+class TestPlotting(ImageTestBase):
+    def model_results(self):
+        return {
+            "LSSI-orf": fac.deletion.experiment(
+                lssi_model_with_orf(), distance_out=40, limit=num_exons_studied
+            ),
+            "LSSI": fac.deletion.experiment(
+                lssi_model(), distance_out=40, limit=num_exons_studied
+            ),
+        }
+
+    def test_by_condition(self):
+        fac.deletion.plot_by_deletion_loc_and_affected_site(
+            self.model_results(),
+            distance_out=40,
+        )
+        self.check_image()
+
+    def test_by_mask(self):
+        fac.deletion.plot_exon_effects_by_orf(
+            self.model_results(),
+            distance_out=40,
+        )
+        self.check_image()
+
+    @parameterized.expand([1, 3, 8])
+    def test_matrix_at_(self, i):
+        fac.deletion.plot_matrix_at_site(
+            self.model_results(),
+            distance_out=40,
+            num_deletions=i,
+        )
+        self.check_image(0.07)

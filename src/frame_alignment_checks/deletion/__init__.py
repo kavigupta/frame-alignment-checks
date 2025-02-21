@@ -5,3 +5,8 @@ from .delete import (
 )
 from .delete import affected_splice_sites, mutation_locations, perform_deletion
 from .deletion_num_stops import num_open_reading_frames
+from .deletion_plotting import (
+    plot_by_deletion_loc_and_affected_site,
+    plot_exon_effects_by_orf,
+    plot_matrix_at_site,
+)
