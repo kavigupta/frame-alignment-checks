@@ -1,4 +1,4 @@
-from . import amino_replacement, deletion, replace_3mer
+from . import deletion, replace_3mer
 from .coding_exon import CodingExon
 from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
 from .deletion import deletion_plotting
