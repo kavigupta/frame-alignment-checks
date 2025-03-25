@@ -154,13 +154,12 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     """
     # this is subscriptable. Not sure why pylint thinks it isn't
     # pylint: disable=unsubscriptable-object
-    x, _ = load_validation_gene(ex.gene_idx)
     target_codon_start += (-(target_codon_start - (ex.acceptor - ex.phase_start))) % 3
+    x, _ = load_validation_gene(ex.gene_idx)
     original_seq = x[target_codon_start - 3 : target_codon_start + 6].argmax(-1)
-    acc, don = ex.acceptor, ex.donor
 
-    x, acc, don, target_codon_start = clip_for_efficiency(
-        model_cl, ex, target_codon_start, x, acc, don
+    x, acc, don, target_codon_start = extract_window_around_center(
+        ex, loc=target_codon_start, model_cl=model_cl, pad_to_cl=False
     )
 
     with_mutated_codons = [
@@ -194,14 +193,26 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     return original_seq, orig_pred, mut_preds
 
 
-def clip_for_efficiency(model_cl, ex, target_codon_start, x, acc, don):
+def extract_window_around_center(ex, *, loc, model_cl, pad_to_cl=False):
+    x, _ = load_validation_gene(ex.gene_idx)
+    acc, don = ex.acceptor, ex.donor
+    if pad_to_cl:
+        x = np.pad(x, ((model_cl // 2, model_cl // 2), (0, 0)))
+        acc, don = acc + model_cl // 2, don + model_cl // 2
+
+    x, acc, don, loc = clip_for_efficiency(model_cl, loc, x, acc, don)
+
+    return x, acc, don, loc
+
+
+def clip_for_efficiency(model_cl, target_codon_start, x, acc, don):
     """
     Clips the sequence for efficiency. This is done by taking a window around the exon.
 
     Also offsets the acceptor, donor, and target_codon_start to be relative to the clipped sequence.
     """
     # pylint: disable=too-many-positional-arguments
-    startloc, endloc = -10 + ex.acceptor - model_cl // 2, 10 + ex.donor + model_cl // 2
+    startloc, endloc = -10 + acc - model_cl // 2, 10 + don + model_cl // 2
     startloc, endloc = max(startloc, 0), min(endloc, len(x))
     x = x[startloc:endloc]
     target_codon_start -= startloc
