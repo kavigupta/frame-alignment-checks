@@ -155,6 +155,7 @@ def mutated_codons_experiment(*, model, model_cl, ex, target_codon_start):
     # this is subscriptable. Not sure why pylint thinks it isn't
     # pylint: disable=unsubscriptable-object
     target_codon_start += (-(target_codon_start - (ex.acceptor - ex.phase_start))) % 3
+    x, _ = load_validation_gene(ex.gene_idx)
     original_seq = x[target_codon_start - 3 : target_codon_start + 6].argmax(-1)
 
     x, acc, don, target_codon_start = extract_window_around_center(
