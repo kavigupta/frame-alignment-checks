@@ -7,7 +7,6 @@ from .lssi import load_with_remapping_pickle
 
 
 class SpliceModel(torch.nn.Module):
-
     def __init__(self, cl_model):
         super().__init__()
         self.acceptor = load_with_remapping_pickle(

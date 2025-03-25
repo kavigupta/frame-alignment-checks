@@ -28,9 +28,9 @@ class TestNoUndesiredChangesMask(unittest.TestCase):
                 [1] * 9,
             ]
         )
-        [[no_undesired_changes_a, no_undesired_changes_d]] = (
-            fac.replace_3mer.no_undesired_changes_mask(o_seq[None])
-        )
+        [
+            [no_undesired_changes_a, no_undesired_changes_d]
+        ] = fac.replace_3mer.no_undesired_changes_mask(o_seq[None])
         # no undesired changes in D because there's no way to induce a stop
         # codon out of the frame being modified
         self.assertTrue(no_undesired_changes_d.all())
@@ -105,7 +105,6 @@ class TestStopCodons(unittest.TestCase):
 
 
 class TestPlotting(ImageTestBase):
-
     def result_orf(self):
         return fac.replace_3mer.experiment(
             model_for_analysis=lssi_model_with_orf(),
