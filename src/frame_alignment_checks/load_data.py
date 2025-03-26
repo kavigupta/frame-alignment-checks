@@ -1,6 +1,6 @@
-from functools import lru_cache
 import gzip
 import pickle
+from functools import lru_cache
 from importlib.resources import as_file, files
 from typing import Tuple
 
