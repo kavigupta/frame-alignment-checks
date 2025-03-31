@@ -1,5 +1,6 @@
 import gzip
 import pickle
+from functools import lru_cache
 from importlib.resources import as_file, files
 from typing import Tuple
 
@@ -16,11 +17,18 @@ def load_validation_gene(idx) -> Tuple[np.ndarray, np.ndarray]:
             return d[f"x{idx}"], d[f"y{idx}"]
 
 
-def load_long_canonical_internal_coding_exons():
-    source = files(data).joinpath("long_canonical_internal_coding_exons.pkl")
+def load_canonical_internal_coding_exons():
+    source = files(data).joinpath("canonical_internal_coding_exons.pkl")
     with as_file(source) as path:
         with open(path, "rb") as f:
             return [CodingExon(**d) for d in pickle.load(f)]
+
+
+@lru_cache(None)
+def load_long_canonical_internal_coding_exons():
+    return [
+        e for e in load_canonical_internal_coding_exons() if e.donor - e.acceptor > 100
+    ]
 
 
 def load_minigene(gene, exon):
