@@ -1,3 +1,8 @@
+from .adjacent_deletions import (
+    adjacent_coding_exons,
+    conditions,
+    run_on_all_adjacent_deletions,
+)
 from .delete import DeletionAccuracyDeltaResult
 from .delete import accuracy_delta_given_deletion_experiment as experiment
 from .delete import (
