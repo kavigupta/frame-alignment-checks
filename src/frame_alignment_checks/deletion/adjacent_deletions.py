@@ -177,13 +177,14 @@ def multiple_deletions(x, yidxs, deletions):
     for start, count in deletions:
         assert start + count < cant_touch_past
         del x[start : start + count]
+        # This is important because we are mutating the list in place, it would be
+        # confusing to use enumerate here
+        # pylint: disable=consider-using-enumerate
         for i in range(len(yidxs)):
             if yidxs[i] < start:
                 continue
-            elif yidxs[i] > start + count:
-                yidxs[i] -= count
-            else:
-                assert False
+            assert yidxs[i] > start + count
+            yidxs[i] -= count
         x += [[0] * 4] * count
         cant_touch_past = start
     return np.array(x), yidxs
