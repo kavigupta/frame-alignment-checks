@@ -14,7 +14,6 @@ from frame_alignment_checks.load_data import (
 from frame_alignment_checks.models import ModelToAnalyze
 from frame_alignment_checks.utils import stable_hash_cached
 
-# each condition reflects the number of deletions being made to the first exon and the second exon
 conditions: Tuple[int, int] = [
     (0, 0),
     (1, 0),
