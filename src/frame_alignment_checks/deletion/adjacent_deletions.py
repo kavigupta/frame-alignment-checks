@@ -12,7 +12,7 @@ from frame_alignment_checks.load_data import (
     load_validation_gene,
 )
 from frame_alignment_checks.models import ModelToAnalyze
-from frame_alignment_checks.utils import stable_hash_cached
+from frame_alignment_checks.utils import device_of, stable_hash_cached
 
 conditions: Tuple[int, int] = [
     (0, 0),
@@ -104,11 +104,13 @@ def close_consecutive_coding_exons():
     ]
 
 
-def run_on_all_adjacent_deletions(model: ModelToAnalyze) -> np.ndarray:
+def run_on_all_adjacent_deletions(model: ModelToAnalyze, *, limit=None) -> np.ndarray:
     """
     Run the model on all adjacent deletions, producing a table of results.
 
     :param model: The model to run. This should be a ModelToAnalyze object.
+    :param limit: The maximum number of pairs of adjacent deletions to run on.
+        If None, run on all pairs. This is useful for debugging.
     :return: An array of results, of shape (N, C, 4), where N is the number of
         pairs of adjacent deletions, and C is the number of conditions.
         The last dimension corresponds to (first.acceptor, first.donor,
@@ -116,7 +118,7 @@ def run_on_all_adjacent_deletions(model: ModelToAnalyze) -> np.ndarray:
         either above/below the classification threshold.
     """
     res = []
-    for first, second in tqdm.tqdm(close_consecutive_coding_exons(), delay=1):
+    for first, second in tqdm.tqdm(close_consecutive_coding_exons()[:limit], delay=1):
         res.append(
             run_on_adjacent_deletions(
                 model.model,
@@ -152,7 +154,12 @@ def run_on_adjacent_deletions(
 
     x_mut, y_idxs = perform_adjacent_deletions(first, second, model_cl)
 
-    return run_batched(run_model, dict(x=x_mut.astype(np.float32), yi=y_idxs), 32)
+    return run_batched(
+        run_model,
+        dict(x=x_mut.astype(np.float32), yi=y_idxs),
+        32,
+        device=device_of(model),
+    )
 
 
 def multiple_deletions(x, yidxs, deletions):
