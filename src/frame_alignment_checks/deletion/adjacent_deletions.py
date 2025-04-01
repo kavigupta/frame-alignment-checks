@@ -1,8 +1,8 @@
 from typing import Dict, List, Tuple
 
-from matplotlib import pyplot as plt
 import numpy as np
 import tqdm.auto as tqdm
+from matplotlib import pyplot as plt
 from permacache import permacache
 from run_batched import run_batched
 from torch import nn
@@ -231,8 +231,14 @@ def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
         run_on_all_adjacent_deletions_for_multiple_series.
     """
     _, axs = plt.subplots(
-        1, len(results), figsize=(len(results) * 3, 3), sharey=True, dpi=400, tight_layout=True
+        1,
+        len(results),
+        figsize=(len(results) * 3, 3),
+        sharey=True,
+        dpi=400,
+        tight_layout=True,
     )
+    ax2 = None
     for ax, k in zip(axs, results):
         res = np.array(results[k]) * 100
         base = res[:, :, conditions.index((0, 0))]
@@ -258,8 +264,9 @@ def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
         ax2.set_xlim(ax.get_xlim())
         ax2.spines["bottom"].set_color("none")
         ax.set_title(k)
+    assert ax2 is not None
     axs[0].set_ylabel("Change in accuracy [%]")
-    legend = ax.legend(
+    legend = axs[-1].legend(
         ncol=2,
         loc="lower right",
         facecolor="white",
