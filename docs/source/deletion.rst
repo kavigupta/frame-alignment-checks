@@ -24,3 +24,4 @@ Adjacent Deletions Experiment
 
 .. autofunction:: fac.deletion.run_on_all_adjacent_deletions
 .. autofunction:: fac.deletion.run_on_all_adjacent_deletions_for_multiple_series
+.. autofunction:: fac.deletion.plot_adjacent_deletion_results

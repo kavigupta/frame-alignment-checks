@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple
 
+from matplotlib import pyplot as plt
 import numpy as np
 import tqdm.auto as tqdm
 from permacache import permacache
@@ -12,7 +13,8 @@ from frame_alignment_checks.load_data import (
     load_validation_gene,
 )
 from frame_alignment_checks.models import ModelToAnalyze
-from frame_alignment_checks.utils import device_of, stable_hash_cached
+from frame_alignment_checks.plotting.colors import bar_color, line_color
+from frame_alignment_checks.utils import bootstrap_series, device_of, stable_hash_cached
 
 conditions: Tuple[int, int] = [
     (0, 0),
@@ -165,7 +167,7 @@ def run_on_adjacent_deletions(
     second: CodingExon,
     *,
     cl_model_clipped,
-    model_cl
+    model_cl,
 ):
     def run_model(inp):
         x, yi = inp["x"], inp["yi"]
@@ -218,3 +220,51 @@ def multiple_deletions(x, yidxs, deletions):
         x += [[0] * 4] * count
         cant_touch_past = start
     return np.array(x), yidxs
+
+
+def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
+    """
+    Plots the results of the adjacent deletion experiment, with each
+    subplot corresponding to a different model series.
+
+    :param results: A dictionary of results, output of
+        run_on_all_adjacent_deletions_for_multiple_series.
+    """
+    _, axs = plt.subplots(
+        1, len(results), figsize=(len(results) * 3, 3), sharey=True, dpi=400
+    )
+    for ax, k in zip(axs, results):
+        res = results[k] * 100
+        base = res[:, :, conditions.index((0, 0))]
+        for i, condition in enumerate(conditions[1:]):
+            for_this = res[:, :, conditions.index(condition)]
+            delta = (for_this - base.astype(np.float32)).mean(1)
+            mu = delta.mean(0)
+            lo, hi = bootstrap_series(delta)
+            ax.plot(
+                mu,
+                label=f"X={condition[0]};Y={condition[1]}",
+                color=line_color(i % 3),
+                linestyle=["-", "--"][i // 3],
+            )
+            ax.fill_between(
+                np.arange(len(mu)), lo, hi, color=bar_color(i % 3), alpha=0.25
+            )
+        ax.set_xticks(range(4), ["3'", "5'", "3'", "5'"])
+        ax2 = ax.twiny()
+        ax2.xaxis.set_ticks_position("bottom")
+        ax2.spines["bottom"].set_position(("outward", 15))
+        ax2.set_xticks([0.5, 2.5], ["Exon 1", "Exon 2"])
+        ax2.set_xlim(ax.get_xlim())
+        ax2.spines["bottom"].set_color("none")
+        ax.set_title(k)
+    axs[0].set_ylabel("Change in accuracy [%]")
+    legend = ax.legend(
+        ncol=2,
+        loc="lower right",
+        facecolor="white",
+        framealpha=1,
+        edgecolor="black",
+    )
+    legend.remove()
+    ax2.add_artist(legend)

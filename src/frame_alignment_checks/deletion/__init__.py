@@ -1,6 +1,7 @@
 from .adjacent_deletions import (
     adjacent_coding_exons,
     conditions,
+    plot_adjacent_deletion_results,
     run_on_all_adjacent_deletions,
     run_on_all_adjacent_deletions_for_multiple_series,
 )
