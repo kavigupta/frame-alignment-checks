@@ -5,12 +5,12 @@ import numpy as np
 
 import frame_alignment_checks as fac
 from tests.models.models import lssi_model, lssi_model_with_orf
-from tests.utils import skip_on_mac
+from tests.utils import ImageTestBase, skip_on_mac
 
 num_pairs_studied = 500
 
 
-class TestDeletion(unittest.TestCase):
+class TestAdjacentDeletion(unittest.TestCase):
 
     @skip_on_mac
     def test_lssi_doesnt_have_any_impact(self):
@@ -49,3 +49,23 @@ class TestDeletion(unittest.TestCase):
                     values[0].tolist(),
                     f"Condition {condition} has different values: {values}",
                 )
+
+
+class TestAdjacentDeletionPlotting(ImageTestBase):
+    def model_results(self):
+        return {
+            "LSSI-orf": [
+                fac.deletion.run_on_all_adjacent_deletions(
+                    lssi_model_with_orf(), limit=num_pairs_studied
+                )
+            ],
+            "LSSI": [
+                fac.deletion.run_on_all_adjacent_deletions(
+                    lssi_model(), limit=num_pairs_studied
+                )
+            ],
+        }
+
+    def test_by_condition(self):
+        fac.deletion.plot_adjacent_deletion_results(self.model_results())
+        self.check_image()

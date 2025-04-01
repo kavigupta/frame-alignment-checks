@@ -231,10 +231,10 @@ def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
         run_on_all_adjacent_deletions_for_multiple_series.
     """
     _, axs = plt.subplots(
-        1, len(results), figsize=(len(results) * 3, 3), sharey=True, dpi=400
+        1, len(results), figsize=(len(results) * 3, 3), sharey=True, dpi=400, tight_layout=True
     )
     for ax, k in zip(axs, results):
-        res = results[k] * 100
+        res = np.array(results[k]) * 100
         base = res[:, :, conditions.index((0, 0))]
         for i, condition in enumerate(conditions[1:]):
             for_this = res[:, :, conditions.index(condition)]
