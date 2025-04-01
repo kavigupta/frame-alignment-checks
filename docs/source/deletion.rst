@@ -15,6 +15,7 @@ Adjacent Deletions Experiment
 ------------------------------------------
 
 .. autofunction:: fac.deletion.adjacent_coding_exons
+.. autofunction:: fac.deletion.close_consecutive_coding_exons
 .. py:data:: fac.deletion.conditions
 
    Each condition reflects the number of deletions being made to the first exon and the second exon.

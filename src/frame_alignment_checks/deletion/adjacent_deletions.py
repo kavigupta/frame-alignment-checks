@@ -96,7 +96,18 @@ def adjacent_coding_exons() -> List[Tuple[CodingExon, CodingExon]]:
     return consecutive_coding_exons
 
 
-def close_consecutive_coding_exons():
+def close_consecutive_coding_exons() -> List[Tuple[CodingExon, CodingExon]]:
+    """
+    All pairs of consecutive coding exons in the dataset we are
+    using for evaluation, with the additional constraint that
+    the distance between the first exon and the second exon (the
+    intron in between) is less than 1000 bp, and the total length
+    of the two exons is less than 4000 bp.
+
+    (The second constraint, given the first, is that the length
+    of the two exons sums to less than 3000 bp, which is not
+    particularly strict.)
+    """
     return [
         (first, second)
         for first, second in adjacent_coding_exons()
