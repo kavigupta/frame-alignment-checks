@@ -1,8 +1,7 @@
-from collections import defaultdict
 import unittest
+from collections import defaultdict
 
 import numpy as np
-
 
 import frame_alignment_checks as fac
 from tests.models.models import lssi_model, lssi_model_with_orf
