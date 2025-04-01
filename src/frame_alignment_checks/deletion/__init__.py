@@ -2,6 +2,7 @@ from .adjacent_deletions import (
     adjacent_coding_exons,
     conditions,
     run_on_all_adjacent_deletions,
+    run_on_all_adjacent_deletions_for_multiple_series,
 )
 from .delete import DeletionAccuracyDeltaResult
 from .delete import accuracy_delta_given_deletion_experiment as experiment

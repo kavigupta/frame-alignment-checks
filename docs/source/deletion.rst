@@ -23,3 +23,4 @@ Adjacent Deletions Experiment
    to select the condition to use.
 
 .. autofunction:: fac.deletion.run_on_all_adjacent_deletions
+.. autofunction:: fac.deletion.run_on_all_adjacent_deletions_for_multiple_series

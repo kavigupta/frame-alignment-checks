@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import tqdm.auto as tqdm
@@ -141,6 +141,18 @@ def run_on_all_adjacent_deletions(model: ModelToAnalyze, *, limit=None) -> np.nd
             > model.thresholds[[0, 1, 0, 1]]
         )
     return np.array(res)
+
+
+def run_on_all_adjacent_deletions_for_multiple_series(
+    mods: Dict[str, List[ModelToAnalyze]],
+) -> Dict[str, np.ndarray]:
+    """
+    Like run_on_all_adjacent_deletions, but for multiple model series.
+    """
+    return {
+        name: np.array([run_on_all_adjacent_deletions(model) for model in ms])
+        for name, ms in mods.items()
+    }
 
 
 @permacache(
