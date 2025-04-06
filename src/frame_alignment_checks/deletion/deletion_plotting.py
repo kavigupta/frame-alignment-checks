@@ -37,8 +37,17 @@ def plot_by_deletion_loc_and_affected_site(
         # delta = 100 * delta.mean(1)
         # delta = delta[:, :, :, [1, 2]]  # only the A and D
         xs = 1 + np.arange(9)
+        is_in_exon = []
         for i, dl in enumerate(mutation_locations):
             for j, loc in enumerate(["3'SS", "5'SS"]):
+                is_in_exon.append(
+                    {
+                        "u.s. of 3'SS": 0,
+                        "d.s. of 3'SS": 1,
+                        "u.s. of 5'SS": 1,
+                        "d.s. of 5'SS": 0,
+                    }[dl]
+                )
                 ys = 100 * delta.mean_effect_series(dl, loc)
                 ax.plot(
                     xs,
@@ -56,8 +65,21 @@ def plot_by_deletion_loc_and_affected_site(
         ax.grid()
         ax.set_xlabel("Deletion length")
     axs[0].set_ylabel("Drop in accuracy when deleting")
-    axs[-1].legend()
+    setup_legend(axs[-1], is_in_exon)
     plt.suptitle(f"Starting at {distance_out}")
+
+
+def setup_legend(ax, is_in_exon):
+    handles, labels = ax.get_legend_handles_labels()
+    ordering = np.argsort(
+        is_in_exon + np.arange(len(is_in_exon)) / len(is_in_exon) * 0.5
+    )
+    ax.legend(
+        [handles[i] for i in ordering],
+        [labels[i] for i in ordering],
+        ncols=2,
+        loc="lower right",
+    )
 
 
 def plot_exon_effects_by_orf(
