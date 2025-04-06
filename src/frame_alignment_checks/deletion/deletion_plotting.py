@@ -77,7 +77,7 @@ def setup_legend(ax, is_in_exon):
     ax.legend(
         [handles[i] for i in ordering],
         [labels[i] for i in ordering],
-        ncols=2,
+        ncol=2,
         loc="lower right",
     )
 
