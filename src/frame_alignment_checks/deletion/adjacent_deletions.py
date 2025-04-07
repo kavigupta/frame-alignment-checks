@@ -222,7 +222,7 @@ def multiple_deletions(x, yidxs, deletions):
     return np.array(x), yidxs
 
 
-def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
+def plot_adjacent_deletion_results(results: Dict[str, np.ndarray], h=3, w=3):
     """
     Plots the results of the adjacent deletion experiment, with each
     subplot corresponding to a different model series.
@@ -233,7 +233,7 @@ def plot_adjacent_deletion_results(results: Dict[str, np.ndarray]):
     _, axs = plt.subplots(
         1,
         len(results),
-        figsize=(len(results) * 3, 3),
+        figsize=(len(results) * h, w),
         sharey=True,
         dpi=400,
         tight_layout=True,
