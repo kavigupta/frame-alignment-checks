@@ -233,7 +233,7 @@ def plot_adjacent_deletion_results(results: Dict[str, np.ndarray], h=3, w=3):
     _, axs = plt.subplots(
         1,
         len(results),
-        figsize=(len(results) * h, w),
+        figsize=(len(results) * w, h),
         sharey=True,
         dpi=400,
         tight_layout=True,
