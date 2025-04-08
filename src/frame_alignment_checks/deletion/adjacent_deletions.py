@@ -173,7 +173,10 @@ def run_on_all_adjacent_deletions_for_multiple_series(
     """
     return {
         name: np.array(
-            [run_on_all_adjacent_deletions(model, outside=outside) for model in ms]
+            [
+                run_on_all_adjacent_deletions(model, outside=outside)
+                for model in tqdm.tqdm(ms, delay=1, desc=name)
+            ]
         )
         for name, ms in mods.items()
     }
