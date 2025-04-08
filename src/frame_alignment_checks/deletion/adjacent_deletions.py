@@ -166,13 +166,15 @@ def run_on_all_adjacent_deletions(
 
 
 def run_on_all_adjacent_deletions_for_multiple_series(
-    mods: Dict[str, List[ModelToAnalyze]],
+    mods: Dict[str, List[ModelToAnalyze]], outside=False
 ) -> Dict[str, np.ndarray]:
     """
     Like run_on_all_adjacent_deletions, but for multiple model series.
     """
     return {
-        name: np.array([run_on_all_adjacent_deletions(model) for model in ms])
+        name: np.array(
+            [run_on_all_adjacent_deletions(model, outside=outside) for model in ms]
+        )
         for name, ms in mods.items()
     }
 
