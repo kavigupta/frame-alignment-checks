@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import tqdm.auto as tqdm
 from matplotlib import pyplot as plt
-from permacache import permacache
+from permacache import permacache, drop_if_equal
 from run_batched import run_batched
 from torch import nn
 
@@ -27,7 +27,9 @@ conditions: Tuple[int, int] = [
 ]
 
 
-def perform_adjacent_deletions(first: CodingExon, second: CodingExon, context: int):
+def perform_adjacent_deletions(
+    first: CodingExon, second: CodingExon, context: int, *, outside: bool
+):
     """
     Compute adjacent deletions on a pair of exons. Specifically, we
     delete from the first exon and the second exon.
@@ -36,6 +38,8 @@ def perform_adjacent_deletions(first: CodingExon, second: CodingExon, context: i
     :param second: The second exon to delete from. This must be the
         exon that follows the first exon.
     :param context: The number of nucleotides to keep around the exons.
+    :param outside: If True, deletions are made on the outer edges of the exons.
+        This only exists for checking the asymmetry results.
 
     :return: (x_mut, y_idxs_mut)
         x_mut: The mutated sequences. Numpy array of shape (C, n, 4), where
@@ -55,10 +59,9 @@ def perform_adjacent_deletions(first: CodingExon, second: CodingExon, context: i
                 yidx_original,
                 [
                     (s, l)
-                    for s, l in [
-                        (first.donor - 10 - off_first, off_first),
-                        (second.acceptor + 10, off_second),
-                    ]
+                    for s, l in deletion_specifications(
+                        first, second, off_first, off_second, outside=outside
+                    )
                     if l > 0
                 ],
             )
@@ -77,6 +80,18 @@ def perform_adjacent_deletions(first: CodingExon, second: CodingExon, context: i
     x_mut = x_mut[:, start : end + 1]
     y_idxs -= start
     return x_mut, y_idxs
+
+
+def deletion_specifications(first, second, off_first, off_second, *, outside):
+    if outside:
+        return [
+            (first.acceptor + 10, off_first),
+            (second.donor - 10 - off_second, off_second),
+        ]
+    return [
+        (first.donor - 10 - off_first, off_first),
+        (second.acceptor + 10, off_second),
+    ]
 
 
 def adjacent_coding_exons() -> List[Tuple[CodingExon, CodingExon]]:
@@ -117,13 +132,17 @@ def close_consecutive_coding_exons() -> List[Tuple[CodingExon, CodingExon]]:
     ]
 
 
-def run_on_all_adjacent_deletions(model: ModelToAnalyze, *, limit=None) -> np.ndarray:
+def run_on_all_adjacent_deletions(
+    model: ModelToAnalyze, *, limit=None, outside=False
+) -> np.ndarray:
     """
     Run the model on all adjacent deletions, producing a table of results.
 
     :param model: The model to run. This should be a ModelToAnalyze object.
     :param limit: The maximum number of pairs of adjacent deletions to run on.
         If None, run on all pairs. This is useful for debugging.
+    :param outside: If True, deletions are made on the outer edges of the exons.
+        This only exists for checking the asymmetry results.
     :return: An array of results, of shape (N, C, 4), where N is the number of
         pairs of adjacent deletions, and C is the number of conditions.
         The last dimension corresponds to (first.acceptor, first.donor,
@@ -139,6 +158,7 @@ def run_on_all_adjacent_deletions(model: ModelToAnalyze, *, limit=None) -> np.nd
                 second,
                 model_cl=model.model_cl,
                 cl_model_clipped=model.cl_model_clipped,
+                outside=outside,
             )
             > model.thresholds[[0, 1, 0, 1]]
         )
@@ -159,7 +179,7 @@ def run_on_all_adjacent_deletions_for_multiple_series(
 
 @permacache(
     "modular_splicing/frame_alignment/deletion_experiment_4",
-    key_function=dict(model=stable_hash_cached),
+    key_function=dict(model=stable_hash_cached, outside=drop_if_equal(False)),
 )
 def run_on_adjacent_deletions(
     model: nn.Module,
@@ -168,6 +188,7 @@ def run_on_adjacent_deletions(
     *,
     cl_model_clipped,
     model_cl,
+    outside=False,
 ):
     def run_model(inp):
         x, yi = inp["x"], inp["yi"]
@@ -177,7 +198,7 @@ def run_on_adjacent_deletions(
         res = model(x).softmax(-1)
         return res[cond_idx, seq_idx, site_idx]
 
-    x_mut, y_idxs = perform_adjacent_deletions(first, second, model_cl)
+    x_mut, y_idxs = perform_adjacent_deletions(first, second, model_cl, outside=outside)
 
     return run_batched(
         run_model,
