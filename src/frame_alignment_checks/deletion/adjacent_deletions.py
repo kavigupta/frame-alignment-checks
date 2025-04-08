@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import tqdm.auto as tqdm
 from matplotlib import pyplot as plt
-from permacache import permacache, drop_if_equal
+from permacache import drop_if_equal, permacache
 from run_batched import run_batched
 from torch import nn
 
