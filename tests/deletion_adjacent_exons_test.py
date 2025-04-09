@@ -52,20 +52,24 @@ class TestAdjacentDeletion(unittest.TestCase):
 
 
 class TestAdjacentDeletionPlotting(ImageTestBase):
-    def model_results(self):
+    def model_results(self, **kwargs):
         return {
             "LSSI-orf": [
                 fac.deletion.run_on_all_adjacent_deletions(
-                    lssi_model_with_orf(), limit=num_pairs_studied
+                    lssi_model_with_orf(), limit=num_pairs_studied, **kwargs
                 )
             ],
             "LSSI": [
                 fac.deletion.run_on_all_adjacent_deletions(
-                    lssi_model(), limit=num_pairs_studied
+                    lssi_model(), limit=num_pairs_studied, **kwargs
                 )
             ],
         }
 
     def test_by_condition(self):
         fac.deletion.plot_adjacent_deletion_results(self.model_results())
+        self.check_image()
+
+    def test_by_condition_outside(self):
+        fac.deletion.plot_adjacent_deletion_results(self.model_results(outside=True))
         self.check_image()
