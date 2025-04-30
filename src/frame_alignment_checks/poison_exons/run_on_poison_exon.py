@@ -39,8 +39,8 @@ def run_model_on_exon(
 
     text = load_poison_exon_sequence(gene_spec, acc, don, model_cl)
 
-    text = np.concatenate(
-        [np.eye(4, dtype=np.float32), [[0, 0, 0, 0]]], dtype=np.float32
+    text = np.concatenate([np.eye(4, dtype=np.float32), [[0, 0, 0, 0]]]).astype(
+        np.float32
     )[text]
 
     with torch.no_grad():

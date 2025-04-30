@@ -54,7 +54,7 @@ def scatterplot(ax, results, title):
         "Closed",
     )
     ax.set_xlim(ef_5.min(), ef_5.max())
-    ax.set_ylabel("$\log_{10}$(predicted exon probability)")
+    ax.set_ylabel("$\\log_{10}$(predicted exon probability)")
     ax.set_xlabel("EF 5%")
     ax.set_title(title)
 

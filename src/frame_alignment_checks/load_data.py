@@ -1,5 +1,4 @@
 import gzip
-import json
 import pickle
 from functools import lru_cache
 from importlib.resources import as_file, files
