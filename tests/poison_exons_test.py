@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-from parameterized import parameterized
 
 import frame_alignment_checks as fac
 from tests.models.models import lssi_model, lssi_model_with_orf
