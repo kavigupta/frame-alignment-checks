@@ -15,7 +15,7 @@ Real Experiment Results
 Plotting
 -------------------------------------------
 
-.. autofunction:: fac.real_experiments.plot_real_experiment_summary
+.. autofunction:: fac.real_experiments.plot_summary
 
 .. autofunction:: fac.poison_exons.poison_exon_scatterplots
 .. autofunction:: fac.poison_exons.poison_exons_summary_plot
