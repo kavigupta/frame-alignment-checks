@@ -10,4 +10,4 @@ Real Experiment Results
 Plotting
 -------------------------------------------
 
-.. autofunction:: fac.real_experiments.plot_real_experiment_summary
+.. autofunction:: fac.real_experiments.plot_summary
