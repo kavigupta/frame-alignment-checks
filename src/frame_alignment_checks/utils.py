@@ -115,7 +115,7 @@ def draw_bases(xs: np.ndarray):
         nested list of strings, where (N, 4) will be returned as a string of length N and (N, M, 4)
         will be returned as a list of N strings of length M.
     """
-    if np.issubdtype(xs.dtype, np.integer) and 0 < xs.max() < 4:
+    if np.issubdtype(xs.dtype, np.integer) and 0 <= xs.max() < 4:
         xs = np.eye(4)[xs]
     assert xs.shape[-1] == 4 and len(xs.shape) > 1
     if len(xs.shape) == 2:

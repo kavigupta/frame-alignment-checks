@@ -5,8 +5,8 @@ import frame_alignment_checks as fac
 
 class TestCodonTableConsistency(unittest.TestCase):
     def test_isomorphism(self):
-        forward = fac.amino_replacement.amino_acid_to_codons
-        backward = fac.amino_replacement.codon_to_amino_acid
+        forward = fac.amino_acid_to_codons
+        backward = fac.codon_to_amino_acid
         for x, codons_x in forward.items():
             for codon_x in codons_x:
                 self.assertEqual(x, backward[codon_x])
@@ -83,11 +83,11 @@ class TestCodonTableConsistency(unittest.TestCase):
             "GGA": "G",
             "GGG": "G",
         }
-        self.assertEqual(fac.amino_replacement.codon_to_amino_acid, expected)
+        self.assertEqual(fac.codon_to_amino_acid, expected)
 
     def test_amino_cat_coverage(self):
         self.assertEqual(
-            sorted(fac.amino_replacement.amino_acid_to_codons.keys()),
+            sorted(fac.amino_acid_to_codons.keys()),
             sorted(fac.amino_replacement.amino_classification.keys()),
         )
 

@@ -9,7 +9,8 @@ from run_batched import run_batched
 from frame_alignment_checks.load_data import load_long_canonical_internal_coding_exons
 from frame_alignment_checks.models import ModelToAnalyze
 
-from ..amino_replacement import amino_classification, codon_to_amino_acid
+from ..amino_replacement import amino_classification
+from ..codon_table import codon_to_amino_acid
 from ..coding_exon import CodingExon
 from ..replace_3mer.stop_codon_replacement import extract_window_around_center
 from ..utils import device_of, stable_hash_cached

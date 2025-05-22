@@ -1,12 +1,12 @@
 import itertools
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import lru_cache
 from typing import List, Tuple
 
 from ..coding_exon import CodingExon
 from ..utils import draw_bases
 from .amino_classification import amino_classification
-from .codon_table import codon_to_amino_acid
+from ..codon_table import codon_to_amino_acid
 
 
 def same_functional_group(a, b):

@@ -1,5 +1,6 @@
-from . import amino_replacement, deletion, replace_3mer
+from . import amino_replacement, deletion, poison_exons, replace_3mer
 from .coding_exon import CodingExon
+from .codon_table import amino_acid_to_codons, codon_to_amino_acid
 from .compute_stop_codons import all_frames_closed, is_stop, sequence_to_codons
 from .deletion import deletion_plotting
 from .deletion.delete import affected_splice_sites, mutation_locations
@@ -19,4 +20,4 @@ from .statistics.handedness_logos import (
     phase_handedness_plot_relative_logos,
     phase_handedness_print_statistics_by_phase,
 )
-from .utils import display_permutation_test_p_values
+from .utils import display_permutation_test_p_values, draw_bases
