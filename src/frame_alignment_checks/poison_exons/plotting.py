@@ -93,7 +93,7 @@ def mean_controlled_quantile(results):
     )
 
 
-def poison_exons_summary_plot(results: Dict[str, np.ndarray]):
+def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, **kwargs):
     """
     Plot the summary of the poison exon analysis. This will plot the mean
     controlled quantile for each model in the results dictionary, and
@@ -102,7 +102,9 @@ def poison_exons_summary_plot(results: Dict[str, np.ndarray]):
     :param results: A dictionary of results, where the keys are the names of the
         models and the values are the results of the poison exon analysis.
     """
-    plt.figure(dpi=400, tight_layout=True, figsize=(6, 4))
+    if ax is None:
+        plt.figure(dpi=400, tight_layout=True, figsize=(6, 4))
+        ax = plt.gca()
     summary = {
         k: np.array([mean_controlled_quantile(r) for r in results[k]]) for k in results
     }
@@ -110,4 +112,5 @@ def poison_exons_summary_plot(results: Dict[str, np.ndarray]):
         line_style=lambda i: dict(color=line_color(i)),
         bar_style=lambda i: dict(color=bar_color(i), alpha=0.5),
     )
-    plot_summary(plt.gca(), summary, "", **style_kwargs)
+    style_kwargs.update(kwargs)
+    plot_summary(ax, summary, "", **style_kwargs)
