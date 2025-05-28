@@ -82,6 +82,7 @@ def plot_raw_real_experiment_results(
     er_by_model: FullRealExperimentResult,
     xlabel,
     axs,
+    k,
 ):
     """
     Plots the raw real experiment results for each model and mask. By "raw" we mean
@@ -97,9 +98,10 @@ def plot_raw_real_experiment_results(
     :param er_by_model: The experiment results by model.
     :param xlabel: The label for the x-axis (the actual values)
     :param axs: The axes to plot on.
+    :param k: The number of closest predictions to consider for the quantile calculation.
     """
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
-    mean_quantiles = er_by_model.mean_quantiles_each()
+    mean_quantiles = er_by_model.mean_quantiles_each(k=k)
     for ax, name in zip(axs.flatten(), er_by_model.er_by_model):
         plot_for_masks(
             ax,
