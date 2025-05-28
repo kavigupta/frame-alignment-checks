@@ -51,8 +51,9 @@ def run_model_on_exon(
         yp = yp[0, [off, off + (don - acc)], [1, 2]]
         return yp.cpu().numpy()
 
+
 @permacache(
-    "frame_alignment_checks/poison_exons/experiment/run_model_on_exon",
+    "frame_alignment_checks/poison_exons/experiment/poison_exon_scores",
     key_function=dict(model_to_analyze=stable_hash),
 )
 def poison_exon_scores(model_to_analyze: ModelToAnalyze, limit=None) -> np.ndarray:
