@@ -90,6 +90,11 @@ def poison_exon_scores_for_model_series(
     :param limit: The maximum number of poison exons to analyze. Useful for testing.
     """
     return {
-        name: [poison_exon_scores(model, limit=limit) for model in models]
-        for name, models in mods.items()
+        name: [
+            poison_exon_scores(model, limit=limit)
+            for model in tqdm.tqdm(models, desc=name, delay=3)
+        ]
+        for name, models in tqdm.tqdm(
+            mods.items(), desc="Running models on poison exons"
+        )
     }
