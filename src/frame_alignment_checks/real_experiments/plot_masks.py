@@ -82,6 +82,7 @@ def plot_raw_real_experiment_results(
     er_by_model: FullRealExperimentResult,
     xlabel,
     axs,
+    k,
 ):
     """
     Plots the raw real experiment results for each model and mask. By "raw" we mean
@@ -99,7 +100,7 @@ def plot_raw_real_experiment_results(
     :param axs: The axes to plot on.
     """
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
-    mean_decrease_probabilities = er_by_model.mean_decrease_probability_each()
+    mean_decrease_probabilities = er_by_model.mean_decrease_probability_each(k=k)
     for ax, name in zip(axs.flatten(), er_by_model.er_by_model):
         plot_for_masks(
             ax,
