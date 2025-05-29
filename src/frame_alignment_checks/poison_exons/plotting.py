@@ -77,7 +77,7 @@ def poison_exon_scatterplots(results: Dict[str, np.ndarray]):
         ax.legend()
 
 
-def mean_controlled_quantile(results):
+def mean_controlled_quantile(results, *, k):
     return mean_quantile(
         load_ef5(),
         np.array(results),
@@ -89,11 +89,18 @@ def mean_controlled_quantile(results):
                 load_all_closed(),
             ]
         ),
-        k=100,
+        k=k,
     )
 
 
-def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, **kwargs):
+def mean_controlled_quantile_each(results: Dict[str, np.ndarray], *, k):
+    return {
+        m: np.array([mean_controlled_quantile(r, k=k) for r in results[m]])
+        for m in results
+    }
+
+
+def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, *, k, **kwargs):
     """
     Plot the summary of the poison exon analysis. This will plot the mean
     controlled quantile for each model in the results dictionary, and
@@ -105,9 +112,7 @@ def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, **kwargs)
     if ax is None:
         plt.figure(dpi=400, tight_layout=True, figsize=(6, 4))
         ax = plt.gca()
-    summary = {
-        k: np.array([mean_controlled_quantile(r) for r in results[k]]) for k in results
-    }
+    summary = mean_controlled_quantile_each(results, k=k)
     style_kwargs = dict(
         line_style=lambda i: dict(color=line_color(i)),
         bar_style=lambda i: dict(color=bar_color(i), alpha=0.5),
