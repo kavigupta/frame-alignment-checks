@@ -3,7 +3,7 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 
-from .math import mean_quantile
+from .math import mean_decrease_probability
 
 
 @dataclass
@@ -18,19 +18,19 @@ class RealExperimentResultForModel:
     actual: np.ndarray  # (N,) floats
     predicteds: List[np.ndarray]  # (S, N) floats
 
-    def compute_mean_quantile_each(self, masks, *, k):
+    def compute_mean_decrease_probability_each(self, masks, *, k):
         """
-        Compute the mean quantile for each mask. The mean quantile is the mean of the quantiles
-        of the predicted values among the 100 closest predictions among the actual values.
+        Compute the mean decrease probability for each mask.
 
         :param masks: a list of tuples, each containing a mask and a name. The mask is a boolean array
             of shape ``(num_exons,)`` indicating which exons were used in the experiment. The name is a string
             identifying the mask.
 
-        :return: an array of shape ``(num_seeds, num_masks)`` containing the mean quantile for each mask.
+        :return: an array of shape ``(num_seeds, num_masks)`` containing the mean decrease probability
+            for each seed and each mask.
         """
         return [
-            mean_quantile(
+            mean_decrease_probability(
                 self.actual, predicted, np.array([mask for mask, _ in masks]), k=k
             )
             for predicted in self.predicteds
@@ -51,14 +51,14 @@ class FullRealExperimentResult:
     er_by_model: Dict[str, RealExperimentResultForModel]
     masks_each: List[Tuple[str, np.ndarray]]
 
-    def mean_quantiles_each(self, *, k):
+    def mean_decrease_probability_each(self, *, k):
         """
-        Mean quantiles for each model, for each mask.
+        Mean decrease probability for each model, for each mask.
 
         :return: a dictionary mapping model names to arrays of shape ``(num_seeds, num_masks)``.
         """
         return {
-            name: er.compute_mean_quantile_each(self.masks_each, k=k)
+            name: er.compute_mean_decrease_probability_each(self.masks_each, k=k)
             for name, er in self.er_by_model.items()
         }
 

@@ -7,7 +7,7 @@ import numpy as np
 from ..load_data import load_nve_descriptors
 from ..plotting.colors import bar_color, line_color
 from ..real_experiments import plot_summary
-from ..real_experiments.math import mean_quantile
+from ..real_experiments.math import mean_decrease_probability
 
 
 @lru_cache(None)
@@ -77,8 +77,8 @@ def poison_exon_scatterplots(results: Dict[str, np.ndarray]):
         ax.legend()
 
 
-def mean_controlled_quantile(results, *, k):
-    return mean_quantile(
+def mean_decrease_probability_pe(results, *, k):
+    return mean_decrease_probability(
         load_ef5(),
         np.array(results),
         np.array(
@@ -93,9 +93,9 @@ def mean_controlled_quantile(results, *, k):
     )
 
 
-def mean_controlled_quantile_each(results: Dict[str, np.ndarray], *, k):
+def mean_decrease_probability_pe_each(results: Dict[str, np.ndarray], *, k):
     return {
-        m: np.array([mean_controlled_quantile(r, k=k) for r in results[m]])
+        m: np.array([mean_decrease_probability_pe(r, k=k) for r in results[m]])
         for m in results
     }
 
@@ -103,7 +103,7 @@ def mean_controlled_quantile_each(results: Dict[str, np.ndarray], *, k):
 def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, *, k, **kwargs):
     """
     Plot the summary of the poison exon analysis. This will plot the mean
-    controlled quantile for each model in the results dictionary, and
+    decrease probability for each model in the results dictionary, and
     provide a bar plot of the results.
 
     :param results: A dictionary of results, where the keys are the names of the
@@ -112,7 +112,7 @@ def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, *, k, **k
     if ax is None:
         plt.figure(dpi=400, tight_layout=True, figsize=(6, 4))
         ax = plt.gca()
-    summary = mean_controlled_quantile_each(results, k=k)
+    summary = mean_decrease_probability_pe_each(results, k=k)
     style_kwargs = dict(
         line_style=lambda i: dict(color=line_color(i)),
         bar_style=lambda i: dict(color=bar_color(i), alpha=0.5),

@@ -43,19 +43,19 @@ def compute_binned_predictor(actual, predicted):
 
 
 def plot_for_masks(
-    ax, title, xlabel, result, masks, mean_quantile_by_mask, *, color_for_idx
+    ax, title, xlabel, result, masks, mean_decrease_prob_by_mask, *, color_for_idx
 ):
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     predicted = result.predicteds[0]
     bins, avg_by_bin, std_by_bin, _ = compute_binned_predictor(result.actual, predicted)
-    for idx, (mask, label), mean_quantile_this in zip(
-        itertools.count(), masks, mean_quantile_by_mask
+    for idx, (mask, label), mean_decrease_prob_this in zip(
+        itertools.count(), masks, mean_decrease_prob_by_mask
     ):
         ax.scatter(
             result.actual[mask],
             predicted[mask],
             alpha=min(1, 1 / mask.sum() ** 0.5 * 5),
-            label=f"{label}; c.m.%ile: {mean_quantile_this:.2%}",
+            label=f"{label}; c.m.%ile: {mean_decrease_prob_this:.2%}",
             marker=".",
             color=color_for_idx(idx),
         )
@@ -86,7 +86,7 @@ def plot_raw_real_experiment_results(
 ):
     """
     Plots the raw real experiment results for each model and mask. By "raw" we mean
-    all the data points, rather than computing quantiles.
+    all the data points, rather than computing decrease probabilities.
 
     Each model is plotted on its own axis, as provided in ``axs``.
 
@@ -100,7 +100,7 @@ def plot_raw_real_experiment_results(
     :param axs: The axes to plot on.
     """
     assert len(axs.flatten()) == len(er_by_model.er_by_model)
-    mean_quantiles = er_by_model.mean_quantiles_each(k=k)
+    mean_decrease_probabilities = er_by_model.mean_decrease_probability_each(k=k)
     for ax, name in zip(axs.flatten(), er_by_model.er_by_model):
         plot_for_masks(
             ax,
@@ -108,6 +108,6 @@ def plot_raw_real_experiment_results(
             xlabel,
             er_by_model.er_by_model[name],
             er_by_model.masks_each,
-            mean_quantile_by_mask=mean_quantiles[name][0],
+            mean_decrease_prob_by_mask=mean_decrease_probabilities[name][0],
             color_for_idx=line_color,
         )
