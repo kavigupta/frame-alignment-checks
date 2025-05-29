@@ -49,5 +49,6 @@ class TestPlotting(ImageTestBase):
     def test_summary_plot(self):
         fac.poison_exons.poison_exons_summary_plot(
             self.model_results(),
+            k=100,
         )
         self.check_image()
