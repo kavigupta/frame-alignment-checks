@@ -3,7 +3,7 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 
-from .math import mean_quantile
+from .math import mean_decrease_probability
 
 
 @dataclass
@@ -18,7 +18,7 @@ class RealExperimentResultForModel:
     actual: np.ndarray  # (N,) floats
     predicteds: List[np.ndarray]  # (S, N) floats
 
-    def compute_mean_quantile_each(self, masks):
+    def compute_mean_quantile_each(self, masks, *, k):
         """
         Compute the mean quantile for each mask. The mean quantile is the mean of the quantiles
         of the predicted values among the 100 closest predictions among the actual values.
@@ -31,7 +31,7 @@ class RealExperimentResultForModel:
         """
         return [
             mean_quantile(
-                self.actual, predicted, np.array([mask for mask, _ in masks]), k=100
+                self.actual, predicted, np.array([mask for mask, _ in masks]), k=k
             )
             for predicted in self.predicteds
         ]
@@ -51,14 +51,14 @@ class FullRealExperimentResult:
     er_by_model: Dict[str, RealExperimentResultForModel]
     masks_each: List[Tuple[str, np.ndarray]]
 
-    def mean_quantiles_each(self):
+    def mean_quantiles_each(self, *, k):
         """
         Mean quantiles for each model, for each mask.
 
         :return: a dictionary mapping model names to arrays of shape ``(num_seeds, num_masks)``.
         """
         return {
-            name: er.compute_mean_quantile_each(self.masks_each)
+            name: er.compute_mean_quantile_each(self.masks_each, k=k)
             for name, er in self.er_by_model.items()
         }
 
