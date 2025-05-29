@@ -26,10 +26,18 @@ def k_closest_index_array(arr, k):
     return np.array(closest_idxs)
 
 
-def mean_quantile(actual, predicted, masks, *, k):
+def mean_decrease_probability(actual, predicted, masks, *, k):
     """
-    Compute the mean of the quantiles of the predicted values at the closest indices.
+    Compute the probability of a randomly selected masked element having a lower prediction than a
+    randomly selected element overall, with similar actual values.
+
+    :param actual: The actual values of the elements.
+    :param predicted: The predicted values of the elements.
+    :param masks: A boolean array indicating which elements are masked.
+    :param k: The number of closest elements to consider for each element.
+    :returns:
+        A single float value representing the mean decrease in probability, for each masked element.
     """
     closest_index_array = k_closest_index_array(actual, k)
-    quantile_by_position = (predicted[:, None] > predicted[closest_index_array]).mean(1)
-    return (quantile_by_position * masks).sum(1) / masks.sum(1)
+    decrease_probability = (predicted[:, None] < predicted[closest_index_array]).mean(1)
+    return (decrease_probability * masks).sum(1) / masks.sum(1)

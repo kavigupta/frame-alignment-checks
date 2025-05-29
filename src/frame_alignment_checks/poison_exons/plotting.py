@@ -7,7 +7,7 @@ import numpy as np
 from ..load_data import load_nve_descriptors
 from ..plotting.colors import bar_color, line_color
 from ..real_experiments import plot_summary
-from ..real_experiments.math import mean_quantile
+from ..real_experiments.math import mean_decrease_probability
 
 
 @lru_cache(None)
@@ -77,8 +77,8 @@ def poison_exon_scatterplots(results: Dict[str, np.ndarray]):
         ax.legend()
 
 
-def mean_controlled_quantile(results):
-    return mean_quantile(
+def mean_decrease_probability_pe(results):
+    return mean_decrease_probability(
         load_ef5(),
         np.array(results),
         np.array(
@@ -96,7 +96,7 @@ def mean_controlled_quantile(results):
 def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, **kwargs):
     """
     Plot the summary of the poison exon analysis. This will plot the mean
-    controlled quantile for each model in the results dictionary, and
+    decrease probability for each model in the results dictionary, and
     provide a bar plot of the results.
 
     :param results: A dictionary of results, where the keys are the names of the
@@ -106,7 +106,7 @@ def poison_exons_summary_plot(results: Dict[str, np.ndarray], ax=None, **kwargs)
         plt.figure(dpi=400, tight_layout=True, figsize=(6, 4))
         ax = plt.gca()
     summary = {
-        k: np.array([mean_controlled_quantile(r) for r in results[k]]) for k in results
+        k: np.array([mean_decrease_probability_pe(r) for r in results[k]]) for k in results
     }
     style_kwargs = dict(
         line_style=lambda i: dict(color=line_color(i)),
