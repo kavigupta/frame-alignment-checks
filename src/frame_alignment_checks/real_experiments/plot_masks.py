@@ -55,7 +55,7 @@ def plot_for_masks(
             result.actual[mask],
             predicted[mask],
             alpha=min(1, 1 / mask.sum() ** 0.5 * 5),
-            label=f"{label}; c.m.%ile: {mean_decrease_prob_this:.2%}",
+            label=f"{label}; c.d.p.: {mean_decrease_prob_this:.2%}",
             marker=".",
             color=color_for_idx(idx),
         )
