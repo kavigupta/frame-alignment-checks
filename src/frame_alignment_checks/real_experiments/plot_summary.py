@@ -31,11 +31,15 @@ def plot_real_experiment_summary(
             summary = 100 - summary
         return summary
 
-    pval = plot_multi_seed_experiment(
-        {k: process(v) for k, v in summaries.items()},
+    label = (
         "Fraction actual below [%]"
         if is_transposed
-        else "Fraction predictions above [%]",
+        else "Fraction predictions above [%]"
+    )
+
+    pval = plot_multi_seed_experiment(
+        {k: process(v) for k, v in summaries.items()},
+        label,
         ax,
         name_remapping=name_remapping,
         **kwargs,
