@@ -18,7 +18,7 @@ class RealExperimentResultForModel:
     actual: np.ndarray  # (N,) floats
     predicteds: List[np.ndarray]  # (S, N) floats
 
-    def compute_mean_decrease_probability_each(self, masks, *, k):
+    def compute_mean_decrease_probability_each(self, masks, *, k, transpose=False):
         """
         Compute the mean decrease probability for each mask.
 
@@ -29,9 +29,12 @@ class RealExperimentResultForModel:
         :return: an array of shape ``(num_seeds, num_masks)`` containing the mean decrease probability
             for each seed and each mask.
         """
+        masks = np.array([mask for mask, _ in masks])
         return [
-            mean_decrease_probability(
-                self.actual, predicted, np.array([mask for mask, _ in masks]), k=k
+            (
+                mean_decrease_probability(self.actual, predicted, masks, k=k)
+                if not transpose
+                else mean_decrease_probability(predicted, self.actual, masks, k=k)
             )
             for predicted in self.predicteds
         ]
@@ -51,14 +54,18 @@ class FullRealExperimentResult:
     er_by_model: Dict[str, RealExperimentResultForModel]
     masks_each: List[Tuple[str, np.ndarray]]
 
-    def mean_decrease_probability_each(self, *, k):
+    def mean_decrease_probability_each(
+        self, *, k, transpose=False
+    ) -> Dict[str, np.ndarray]:
         """
         Mean decrease probability for each model, for each mask.
 
         :return: a dictionary mapping model names to arrays of shape ``(num_seeds, num_masks)``.
         """
         return {
-            name: er.compute_mean_decrease_probability_each(self.masks_each, k=k)
+            name: er.compute_mean_decrease_probability_each(
+                self.masks_each, k=k, transpose=transpose
+            )
             for name, er in self.er_by_model.items()
         }
 
