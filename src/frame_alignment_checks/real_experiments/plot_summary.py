@@ -11,6 +11,7 @@ def plot_real_experiment_summary(
     title,
     *,
     name_remapping=frozendict(),
+    is_transposed=False,
     **kwargs,
 ):
     """
@@ -23,9 +24,22 @@ def plot_real_experiment_summary(
     :param title: the title of the plot.
     :param name_remapping: a dictionary mapping model names to new names.
     """
+
+    def process(summary):
+        summary = 100 * np.array(summary)[:, 1]
+        if is_transposed:
+            summary = 100 - summary
+        return summary
+
+    label = (
+        "Fraction actual below [%]"
+        if is_transposed
+        else "Fraction predictions above [%]"
+    )
+
     pval = plot_multi_seed_experiment(
-        {k: 100 * np.array(v)[:, 1] for k, v in summaries.items()},
-        "Controlled mean decrease probability [%]",
+        {k: process(v) for k, v in summaries.items()},
+        label,
         ax,
         name_remapping=name_remapping,
         **kwargs,
