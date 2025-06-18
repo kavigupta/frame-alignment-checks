@@ -36,7 +36,7 @@ def plot_by_codon(result: Replace3MerResult, mask: np.ndarray, *, ax=None):
         ax.scatter(
             xs,
             series_mean[phase + 1],
-            label=f"Phase: {phase}",
+            label=f"Phase: {phase % 3}",
             color=line_color(phase + 1),
             marker="_",
         )
