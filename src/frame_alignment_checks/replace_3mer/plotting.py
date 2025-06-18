@@ -36,7 +36,7 @@ def plot_by_codon(result: Replace3MerResult, mask: np.ndarray, *, ax=None):
         ax.scatter(
             xs,
             series_mean[phase + 1],
-            label=f"Phase: {phase}",
+            label=f"Phase: {phase % 3}",
             color=line_color(phase + 1),
             marker="_",
         )
@@ -133,7 +133,7 @@ def plot_effect_grouped(
     ax_phases.set_xlim(ax_models.get_xlim())
 
     ax_phases.set_xticks(centers_for_models, list(results))
-    ax_models.set_xticks(centers_for_phases, ["−1", "0", "+1"] * len(results))
+    ax_models.set_xticks(centers_for_phases, ["2", "0", "1"] * len(results))
     # 3 columns, lower right, small font
     ax_models.legend(loc="lower right", fontsize="small")
     ax_models.set_ylabel(
@@ -201,9 +201,7 @@ def plot_by_codon_table(
     ax_phases.xaxis.set_label_position("top")
 
     ax_phases.set_xlim(ax_models.get_xlim())
-    ax_phases.set_xticks(
-        np.array(xmids_all).flatten(), ["−1", "0", "+1"] * len(results)
-    )
+    ax_phases.set_xticks(np.array(xmids_all).flatten(), ["2", "0", "1"] * len(results))
     ax_models.set_xticks(np.mean(xmids_all, 1), list(results))
     ax_models.tick_params(axis="x", top=False)
 
