@@ -63,7 +63,7 @@ def plot_by_deletion_loc_and_affected_site(
         ax.set_xticks([3, 6, 9])
         ax.set_title(name)
         ax.grid()
-        ax.set_xlabel("Deletion length")
+        ax.set_xlabel("Deletion size [nt]")
     axs[0].set_ylabel("Drop in accuracy when deleting")
     setup_legend(axs[-1], is_in_exon)
     plt.suptitle(f"Starting at {distance_out}")
@@ -132,6 +132,7 @@ def plot_exon_effects_by_orf(
         ax.set_xticks([3, 6, 9])
         ax.set_title(name)
         ax.grid()
+        ax.set_xlabel("Deletion size [nt]")
     axs[-1].legend()
     axs[0].set_ylabel("Drop in accuracy when deleting")
 
