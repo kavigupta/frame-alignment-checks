@@ -111,9 +111,9 @@ def plot_exon_effects_by_orf(
     for name, ax in zip(deltas_by_model, axs):
         delta = deltas_by_model[name]
         conditions = {
-            "all": np.ones_like(num_frames_open, dtype=bool),
-            "at least one r.f. open": num_frames_open > 0,
-            "all r.f.'s closed": num_frames_open == 0,
+            "overall": np.ones_like(num_frames_open, dtype=bool),
+            "at least one ORF": num_frames_open > 0,
+            "no ORF": num_frames_open == 0,
         }
         for color_idx, condition in enumerate(conditions):
             mask = conditions[condition]
