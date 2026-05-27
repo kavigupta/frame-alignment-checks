@@ -133,10 +133,10 @@ def process_exon(ex):
                 site_track_idx.append(t)
                 break
         else:
-            for t, ts in enumerate(track_strands):
-                if ts == gene_strand:
-                    site_track_idx.append(t)
-                    break
+            raise ValueError(
+                f"No {st_type} track found for strand {gene_strand}; "
+                f"tracks={list(zip(track_names, track_strands))}"
+            )
 
     # --- splice site genomic positions ---
     site_seq_positions = [ex.prev_donor, ex.acceptor, ex.donor, ex.next_acceptor]
@@ -151,6 +151,10 @@ def process_exon(ex):
 
         del_len = len(v.reference_bases)
         del_end_0based = v.position - 1 + del_len
+        assert alt_ss.values.shape[0] == ref_ss.values.shape[0] - del_len, (
+            f"alt array shape {alt_ss.values.shape} not shorter than ref "
+            f"{ref_ss.values.shape} by del_len={del_len}"
+        )
 
         for si, (sg, ti) in enumerate(zip(site_genomic, site_track_idx)):
             idx = sg - 1 - track_start
