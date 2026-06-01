@@ -264,6 +264,27 @@ def basic_deletion_experiment_multi(
     return np.array(res_base), np.array(res_del), np.array(metas)
 
 
+def deletion_ranges_for_exon(ex, *, distance_out, delete_up_to):
+    """
+    The half-open ``(start, end)`` sequence-coordinate ranges to delete around
+    an exon's splice sites, for deletion lengths ``1..delete_up_to``.
+
+    Ordered as ``[delete_len][mutation_location]`` where mutation_location
+    follows ``mutation_locations`` =
+    ``[u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS]`` (i.e. for each
+    of the acceptor (3'SS) then donor (5'SS), the upstream then downstream
+    range ``distance_out`` nt away). Length ``delete_up_to * 4``.
+    """
+    ranges = []
+    for delete_len in range(1, delete_up_to + 1):
+        for site in (ex.acceptor, ex.donor):
+            ranges.append((site - distance_out - delete_len, site - distance_out))
+            ranges.append(
+                (site + distance_out + 1, site + distance_out + 1 + delete_len)
+            )
+    return ranges
+
+
 def basic_deletion_experiment(
     ex, model, model_cl, repair_strategy_spec, *, distance_out, delete_up_to=9
 ):
@@ -283,19 +304,9 @@ def basic_deletion_experiment(
     ) * 2 < ex.donor - ex.acceptor, (
         f"This deletion experiment {distance_out} is too large for the exon {ex}"
     )
-    deletion_ranges_incl = []
-    for delete in range(1, delete_up_to + 1):
-        deletion_ranges_incl.extend(
-            [
-                (ex.acceptor - distance_out - delete, ex.acceptor - distance_out - 1),
-                (ex.acceptor + distance_out + 1, ex.acceptor + distance_out + delete),
-                (ex.donor - distance_out - delete, ex.donor - distance_out - 1),
-                (ex.donor + distance_out + 1, ex.donor + distance_out + delete),
-            ]
-        )
-    deletion_ranges_half_excl = [
-        (start, end + 1) for start, end in deletion_ranges_incl
-    ]
+    deletion_ranges_half_excl = deletion_ranges_for_exon(
+        ex, distance_out=distance_out, delete_up_to=delete_up_to
+    )
     yps, metas = deletion_experiment(
         ex, model, model_cl, deletion_ranges_half_excl, repair_strategy_spec
     )

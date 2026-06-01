@@ -19,6 +19,7 @@ from ..load_data import load_transcript_coords, load_validation_gene
 from .delete import (
     DeletionAccuracyDeltaResult,
     affected_splice_sites,
+    deletion_ranges_for_exon,
     mutation_locations,
 )
 
@@ -28,6 +29,24 @@ _SITE_TRACK_TYPES = ("donor", "acceptor", "donor", "acceptor")
 
 _COMP = {"A": "T", "C": "G", "G": "C", "T": "A"}
 _NTS = np.array(list("ACGT"))
+
+
+def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
+    """
+    Call ``model.predict_variants(**kwargs)`` with exponential backoff on
+    ``grpc.RpcError``. Re-raises after ``max_attempts`` failures.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return model.predict_variants(**kwargs)
+        except grpc.RpcError as e:
+            if attempt == max_attempts:
+                raise
+            print(
+                f"  predict_variants RpcError (attempt {attempt}/{max_attempts}): "
+                f"{e.code() if hasattr(e, 'code') else e}; retrying"
+            )
+            time.sleep(2 ** (attempt - 1))
 
 
 def check_splice_site_signals(ref_track, site_genomic, site_track_idx, *, window=50):
@@ -110,50 +129,28 @@ def deltas_for_exon(
     )
 
     variants = []
-    for delete_len in range(1, delete_up_to + 1):
-        deletion_specs = [
-            (exon.acceptor - distance_out - delete_len, exon.acceptor - distance_out),
-            (
-                exon.acceptor + distance_out + 1,
-                exon.acceptor + distance_out + 1 + delete_len,
-            ),
-            (exon.donor - distance_out - delete_len, exon.donor - distance_out),
-            (
-                exon.donor + distance_out + 1,
-                exon.donor + distance_out + 1 + delete_len,
-            ),
-        ]
-        for seq_start, seq_end in deletion_specs:
-            ref_bases = seq_slice_to_ref_bases(seq_start, seq_end)
-            pos = deletion_variant_position_1based(seq_start, seq_end)
-            variants.append(
-                genome.Variant(
-                    chromosome=gene_info["chrom"],
-                    position=pos,
-                    reference_bases=ref_bases,
-                    alternate_bases="",
-                )
+    for seq_start, seq_end in deletion_ranges_for_exon(
+        exon, distance_out=distance_out, delete_up_to=delete_up_to
+    ):
+        ref_bases = seq_slice_to_ref_bases(seq_start, seq_end)
+        pos = deletion_variant_position_1based(seq_start, seq_end)
+        variants.append(
+            genome.Variant(
+                chromosome=gene_info["chrom"],
+                position=pos,
+                reference_bases=ref_bases,
+                alternate_bases="",
             )
+        )
 
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
-        try:
-            variant_outputs = model.predict_variants(
-                intervals=interval,
-                variants=variants,
-                ontology_terms=list(ontology_terms),
-                requested_outputs=[output_type],
-                progress_bar=False,
-            )
-            break
-        except grpc.RpcError as e:
-            if attempt == max_attempts:
-                raise
-            time.sleep(2 ** (attempt - 1))
-            print(
-                f"  predict_variants RpcError (attempt {attempt}/{max_attempts}): "
-                f"{e.code() if hasattr(e, 'code') else e}; retrying"
-            )
+    variant_outputs = _predict_variants_with_retry(
+        model,
+        intervals=interval,
+        variants=variants,
+        ontology_terms=list(ontology_terms),
+        requested_outputs=[output_type],
+        progress_bar=False,
+    )
 
     ref_ss_0 = variant_outputs[0].reference.get(output_type)
     track_names = list(ref_ss_0.metadata["name"])
