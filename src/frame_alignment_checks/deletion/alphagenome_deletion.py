@@ -50,12 +50,20 @@ def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
             time.sleep(2 ** (attempt - 1))
 
 
-def check_splice_site_signals(ref_track, site_genomic, site_track_idx, *, window=50):
+def check_splice_site_signals(
+    ref_track, site_genomic, site_track_idx, *, window=50, min_value=0.5
+):
     """
-    Sanity-check that each known splice site is the local maximum on its
-    matched donor/acceptor track within ``±window`` bp. Raises ``AssertionError``
-    if any in-window site fails. Sites whose genomic position falls outside the
-    track interval are skipped. Uses the reference (un-variant) prediction.
+    Sanity-check that each known splice site maps onto AlphaGenome's predicted
+    splice peak on its matched donor/acceptor track. A correctly-mapped site
+    sits on the (sharp, ~1-valued) peak while bases even a few bp away score
+    ~0, so the site passes if it is either the local maximum within ``±window``
+    bp **or** still a strong peak in absolute terms (``>= min_value``) -- the
+    latter tolerates a distinct, real neighbouring splice site that happens to
+    score slightly higher in the wide window. A genuinely mis-mapped site fails
+    both (it sits on the ~0 background). Raises ``AssertionError`` if any
+    in-window site fails. Sites whose genomic position falls outside the track
+    interval are skipped. Uses the reference (un-variant) prediction.
     """
     track_start = ref_track.interval.start
     W = ref_track.values.shape[0]
@@ -68,10 +76,11 @@ def check_splice_site_signals(ref_track, site_genomic, site_track_idx, *, window
         nb = np.concatenate(
             [ref_track.values[lo:idx, ti], ref_track.values[idx + 1 : hi, ti]]
         )
-        assert site_val > float(nb.max()), (
+        nb_max = float(nb.max())
+        assert site_val > nb_max or site_val >= min_value, (
             f"splice-site sanity check failed at {label}: "
-            f"value {site_val:.4f} not > neighbor max {float(nb.max()):.4f} "
-            f"in window ±{window} (track {ti})"
+            f"value {site_val:.4f} not > neighbor max {nb_max:.4f} "
+            f"in window ±{window} and below floor {min_value} (track {ti})"
         )
 
 
