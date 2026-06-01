@@ -4,6 +4,7 @@ AlphaGenome batch variant interface and return the per-site delta table as
 a ``DeletionAccuracyDeltaResult``.
 """
 
+import os
 import time
 from typing import List, Sequence
 
@@ -30,6 +31,16 @@ _SITE_TRACK_TYPES = ("donor", "acceptor", "donor", "acceptor")
 
 _COMP = {"A": "T", "C": "G", "G": "C", "T": "A"}
 _NTS = np.array(list("ACGT"))
+
+# Package-local cache directory (shipped with the package via package_data), so
+# precomputed AlphaGenome results travel with the install instead of living in
+# the user's global permacache. Resolved from __file__ so it works wherever the
+# package is installed; an absolute path overrides permacache's default base.
+_CACHE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data",
+    "alphagenome_cache",
+)
 
 
 def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
@@ -85,7 +96,7 @@ def check_splice_site_signals(
 
 
 @permacache(
-    "modular_splicing/frame_alignment/alphagenome_deltas_for_exon_1",
+    _CACHE_DIR,
     key_function=dict(
         exon=lambda e: e.__dict__,
         # gene_info and seq_idx are derived from exon.gene_idx, but hash them

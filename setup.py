@@ -13,7 +13,13 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     package_data={
-        "frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]
+        "frame_alignment_checks.data": [
+            "**/*.npz",
+            "**/*.pkl",
+            "**/*.xlsx",
+            "**/*.gz",
+            "**/*.json",
+        ]
     },
     include_package_data=True,
     classifiers=[
