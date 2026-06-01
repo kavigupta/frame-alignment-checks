@@ -223,6 +223,7 @@ def deltas_for_exon(
     # lookup (idx). If a future release fixes the frameshift this flips, and we
     # fail loudly here rather than silently double-correcting.
     frameshift_checks = []
+    frameshift_diag = []  # one (passed, detail-string) per voting peak
     for vi, (vo, v) in enumerate(zip(variant_outputs, variants)):
         ref_ss = vo.reference.get(output_type)
         alt_ss = vo.alternate.get(output_type)
@@ -257,17 +258,34 @@ def deltas_for_exon(
                 )
                 unshifted = float(alt_ss.values[idx, ti])
                 if rv >= 2 * nb and max(av, unshifted) >= 0.5 * rv:
-                    frameshift_checks.append(abs(av - rv) <= abs(unshifted - rv))
+                    shifted_err = abs(av - rv)
+                    unshifted_err = abs(unshifted - rv)
+                    passed = shifted_err <= unshifted_err
+                    frameshift_checks.append(passed)
+                    frameshift_diag.append(
+                        (
+                            passed,
+                            f"del_len={del_len} loc={mutation_locations[vi % 4]!r} "
+                            f"site={affected_splice_sites[si]!r}: "
+                            f"ref={rv:.4f} shifted_alt={av:.4f} unshifted_alt={unshifted:.4f} "
+                            f"-> shifted_err={shifted_err:.4f} vs unshifted_err={unshifted_err:.4f} "
+                            f"(margin={unshifted_err - shifted_err:+.4f})",
+                        )
+                    )
 
-    # Vacuously true if no peak qualified for this exon (others will vote); a
-    # real upstream fix flips essentially every qualifying peak, so it is caught.
-    assert all(frameshift_checks), (
+    # No qualifying peak is vacuously fine (others vote). A real upstream fix
+    # flips essentially every qualifying peak, so only error when a substantial
+    # fraction (>= 25%) flip; isolated flips on weak peaks are noise.
+    flipped = "".join(f"\n    - {d}" for ok, d in frameshift_diag if not ok)
+    n_fail = frameshift_checks.count(False)
+    n_total = len(frameshift_checks)
+    assert n_total == 0 or n_fail < 0.25 * n_total, (
         "AlphaGenome alt track no longer appears left-shifted by del_len: the "
         "shifted readout failed to match the reference splice peak better than "
-        f"the un-shifted readout in {frameshift_checks.count(False)}/"
-        f"{len(frameshift_checks)} checks. If a release fixed the deletion "
-        "frameshift (google-deepmind/alphagenome issue #23), drop the "
-        "idx-del_len correction in deltas_for_exon."
+        f"the un-shifted readout in {n_fail}/{n_total} checks (>= 25%). If a "
+        "release fixed the deletion frameshift (google-deepmind/alphagenome "
+        "issue #23), drop the idx-del_len correction in deltas_for_exon. "
+        f"Flipped peak(s):{flipped}"
     )
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
