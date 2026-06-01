@@ -322,18 +322,28 @@ def run_alphagenome_deletion_experiment(
     ``(1, num_exons, delete_up_to, 4, 4)`` (single seed), with the exons in the
     same order as ``exons`` (no rows dropped or reordered).
 
-    Every exon must succeed. Exons whose prediction raises are recorded and
-    processing continues to the end so that all per-exon failures are reported
-    at once; if any failed, a ``RuntimeError`` is raised and no result is
-    returned. (Successful per-exon predictions are cached individually by
-    :func:`deltas_for_exon`, and errors are never cached, so re-running after
-    fixing the cause only recomputes the failures.)
+    Exons whose gene has no entry in ``load_transcript_coords()`` cannot be
+    placed genomically, so they yield an all-NaN block (skipped by the
+    NaN-aware aggregation on :class:`DeletionAccuracyDeltaResult`) rather than
+    failing the run. Every other exon must succeed: exons whose prediction
+    raises are recorded and processing continues to the end so that all per-exon
+    failures are reported at once; if any failed, a ``RuntimeError`` is raised
+    and no result is returned. (Successful per-exon predictions are cached
+    individually by :func:`deltas_for_exon`, and errors are never cached, so
+    re-running after fixing the cause only recomputes the failures.)
     """
     tc = load_transcript_coords()
+    nan_block = np.full(
+        (delete_up_to, len(mutation_locations), len(affected_splice_sites)), np.nan
+    )
     per_exon = []
     failures = []
     iterator = tqdm.tqdm(exons, desc="exons") if progress else exons
     for i, ex in enumerate(iterator):
+        if ex.gene_idx not in tc:
+            print(f"  exon {i} (gene_idx={ex.gene_idx}): no transcript coords; NaN")
+            per_exon.append(nan_block)
+            continue
         try:
             x_seq, _ = load_validation_gene(ex.gene_idx)
             per_exon.append(
