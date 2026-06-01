@@ -114,11 +114,6 @@ def deltas_for_exon(
             return gene_info["hg38_start"] + pos
         return gene_info["hg38_end"] - pos
 
-    def deletion_variant_position_1based(start, end):
-        if strand == "+":
-            return gene_info["hg38_start"] + start
-        return gene_info["hg38_end"] - end + 1
-
     exon_mid_0based = (
         seq_pos_to_genomic_1based((exon.acceptor + exon.donor) // 2) - 1
     )
@@ -133,7 +128,8 @@ def deltas_for_exon(
         exon, distance_out=distance_out, delete_up_to=delete_up_to
     ):
         ref_bases = seq_slice_to_ref_bases(seq_start, seq_end)
-        pos = deletion_variant_position_1based(seq_start, seq_end)
+        # leftmost genomic coordinate of the half-open deleted span [start, end)
+        pos = seq_pos_to_genomic_1based(seq_start if strand == "+" else seq_end - 1)
         variants.append(
             genome.Variant(
                 chromosome=gene_info["chrom"],
