@@ -247,12 +247,19 @@ def run_alphagenome_deletion_experiment(
     """
     Run :func:`deltas_for_exon` across a list of exons and return a
     :class:`DeletionAccuracyDeltaResult` whose ``raw_data`` has shape
-    ``(1, num_exons, delete_up_to, 4, 4)`` (single seed).
+    ``(1, num_exons, delete_up_to, 4, 4)`` (single seed), with the exons in the
+    same order as ``exons`` (no rows dropped or reordered).
 
-    Exons whose prediction raises are skipped (and a message is printed).
+    Every exon must succeed. Exons whose prediction raises are recorded and
+    processing continues to the end so that all per-exon failures are reported
+    at once; if any failed, a ``RuntimeError`` is raised and no result is
+    returned. (Successful per-exon predictions are cached individually by
+    :func:`deltas_for_exon`, and errors are never cached, so re-running after
+    fixing the cause only recomputes the failures.)
     """
     tc = load_transcript_coords()
     per_exon = []
+    failures = []
     iterator = tqdm.tqdm(exons, desc="exons") if progress else exons
     for i, ex in enumerate(iterator):
         try:
@@ -272,6 +279,17 @@ def run_alphagenome_deletion_experiment(
             )
         except Exception as e:  # pylint: disable=broad-except
             print(f"  exon {i} (gene_idx={ex.gene_idx}): FAILED - {e}")
+            failures.append((i, ex.gene_idx, e))
+
+    if failures:
+        summary = "\n".join(
+            f"  exon {i} (gene_idx={gene_idx}): {type(e).__name__}: {e}"
+            for i, gene_idx, e in failures
+        )
+        raise RuntimeError(
+            f"{len(failures)}/{len(exons)} exon(s) failed in the AlphaGenome "
+            f"deletion experiment:\n{summary}"
+        ) from failures[0][2]
 
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
