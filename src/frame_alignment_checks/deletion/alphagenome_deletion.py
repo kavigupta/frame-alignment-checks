@@ -206,6 +206,14 @@ def deltas_for_exon(
     # it -- so for sites past the deletion we look up alt at idx - del_len.
     # (See google-deepmind/alphagenome issue #23.)
     raw = np.zeros((len(variants), 4))
+    # Evidence that AlphaGenome's alt track is still left-shifted by del_len for
+    # deletions -- the un-fixed behavior the idx-del_len readout corrects for
+    # (issue #23, confirmed open by a maintainer). For each sharp, surviving
+    # central splice peak read on the shifted branch, the shifted lookup
+    # (idx-del_len) must match the reference peak better than the un-shifted
+    # lookup (idx). If a future release fixes the frameshift this flips, and we
+    # fail loudly here rather than silently double-correcting.
+    frameshift_checks = []
     for vi, (vo, v) in enumerate(zip(variant_outputs, variants)):
         ref_ss = vo.reference.get(output_type)
         alt_ss = vo.alternate.get(output_type)
@@ -219,13 +227,39 @@ def deltas_for_exon(
 
         for si, (sg, ti) in enumerate(zip(site_genomic, site_track_idx)):
             idx = sg - 1 - track_start
-            alt_idx = idx - del_len if (sg - 1) >= del_end_0based else idx
+            shifted = (sg - 1) >= del_end_0based
+            alt_idx = idx - del_len if shifted else idx
             if not (0 <= idx < W and 0 <= alt_idx < W):
                 raw[vi, si] = np.nan
                 continue
             rv = float(ref_ss.values[idx, ti])
             av = float(alt_ss.values[alt_idx, ti])
             raw[vi, si] = av - rv
+
+            # Frameshift guard. Only the central acceptor/donor (si 1, 2) are
+            # validated sharp peaks. Require a peak that is sharp at the del_len
+            # scale in the reference (rv >= 2*neighbor) and that largely
+            # survived the deletion, so the shifted-vs-unshifted comparison is
+            # well-defined; otherwise this (vi, si) just doesn't vote.
+            if shifted and si in (1, 2) and rv > 0 and idx + del_len < W:
+                nb = max(
+                    float(ref_ss.values[idx - del_len, ti]),
+                    float(ref_ss.values[idx + del_len, ti]),
+                )
+                unshifted = float(alt_ss.values[idx, ti])
+                if rv >= 2 * nb and max(av, unshifted) >= 0.5 * rv:
+                    frameshift_checks.append(abs(av - rv) <= abs(unshifted - rv))
+
+    # Vacuously true if no peak qualified for this exon (others will vote); a
+    # real upstream fix flips essentially every qualifying peak, so it is caught.
+    assert all(frameshift_checks), (
+        "AlphaGenome alt track no longer appears left-shifted by del_len: the "
+        "shifted readout failed to match the reference splice peak better than "
+        f"the un-shifted readout in {frameshift_checks.count(False)}/"
+        f"{len(frameshift_checks)} checks. If a release fixed the deletion "
+        "frameshift (google-deepmind/alphagenome issue #23), drop the "
+        "idx-del_len correction in deltas_for_exon."
+    )
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
     return raw.reshape(
