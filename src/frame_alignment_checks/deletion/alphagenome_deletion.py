@@ -13,6 +13,7 @@ import tqdm
 from alphagenome.data import genome
 from alphagenome.models import dna_client
 from alphagenome.models.dna_output import OutputType
+from permacache import permacache, stable_hash
 
 from ..coding_exon import CodingExon
 from ..load_data import load_transcript_coords, load_validation_gene
@@ -74,6 +75,23 @@ def check_splice_site_signals(ref_track, site_genomic, site_track_idx, *, window
         )
 
 
+@permacache(
+    "modular_splicing/frame_alignment/alphagenome_deltas_for_exon_1",
+    key_function=dict(
+        exon=lambda e: e.__dict__,
+        # gene_info and seq_idx are derived from exon.gene_idx, but hash them
+        # anyway so the key faithfully reflects the actual inputs.
+        gene_info=stable_hash,
+        seq_idx=stable_hash,
+        # the served model identity (e.g. "ALL_FOLDS"/"FOLD_0"), or None if the
+        # client was created without an explicit model_version.
+        model=lambda m: getattr(m, "_model_version", None),
+        output_type=lambda o: str(o),
+        ontology_terms=lambda t: list(t),
+    ),
+    shelf_type="individual-file",
+    driver="json",
+)
 def deltas_for_exon(
     exon: CodingExon,
     gene_info: dict,
@@ -85,8 +103,7 @@ def deltas_for_exon(
     delete_up_to: int,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
-    sanity_check_window: int | None = 50,
-) -> np.ndarray:
+) -> list:
     """
     Run all deletions of length ``1..delete_up_to`` placed ``distance_out`` nt
     away (in seq/transcript coordinates) from the acceptor and donor of
@@ -98,8 +115,10 @@ def deltas_for_exon(
     :param seq_idx: integer base indices for the gene (shape ``(L,)``).
     :param model: AlphaGenome client.
     :param output_type: ``OutputType.SPLICE_SITES`` or ``OutputType.SPLICE_SITE_USAGE``.
-    :returns: deltas of shape ``(delete_up_to, 4, 4)`` indexed by
-        ``[deletion - 1, mutation_location, affected_splice_site]``.
+    :returns: deltas as nested lists (JSON-serializable, so the result can be
+        cached one-file-per-exon) of shape ``(delete_up_to, 4, 4)`` indexed by
+        ``[deletion - 1, mutation_location, affected_splice_site]``. Wrap in
+        ``np.asarray`` to get an array back.
     """
     strand = gene_info["strand"]
 
@@ -172,13 +191,11 @@ def deltas_for_exon(
     ]
     site_genomic = [seq_pos_to_genomic_1based(p) for p in site_seq_positions]
 
-    if sanity_check_window is not None:
-        check_splice_site_signals(
-            variant_outputs[0].reference.get(output_type),
-            site_genomic,
-            site_track_idx,
-            window=sanity_check_window,
-        )
+    check_splice_site_signals(
+        variant_outputs[0].reference.get(output_type),
+        site_genomic,
+        site_track_idx,
+    )
 
     # raw_per_variant[variant_index, site] then reshape to (deletion, location, site)
     # `predict_variants` returns alt tracks that span the same array shape as
@@ -211,7 +228,9 @@ def deltas_for_exon(
             raw[vi, si] = av - rv
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
-    return raw.reshape(delete_up_to, len(mutation_locations), len(affected_splice_sites))
+    return raw.reshape(
+        delete_up_to, len(mutation_locations), len(affected_splice_sites)
+    ).tolist()
 
 
 def run_alphagenome_deletion_experiment(
