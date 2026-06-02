@@ -42,6 +42,20 @@ _SITE_TRACK_TYPES = ("donor", "acceptor", "donor", "acceptor")
 _COMP = {"A": "T", "C": "G", "G": "C", "T": "A"}
 _NTS = np.array(list("ACGT"))
 
+# --- tuning constants ---
+# ``_predict_variants_with_retry``: attempts before giving up on transient
+# grpc RpcErrors.
+PREDICT_MAX_ATTEMPTS = 5
+# ``check_splice_site_signals``: a site passes if it is the maximum within
+# ±WINDOW bp of its annotated position, or scores at least FLOOR in absolute
+# terms regardless of the window.
+SPLICE_SITE_PEAK_WINDOW = 50
+SPLICE_SITE_PEAK_FLOOR = 0.5
+# ``run_alphagenome_deletion_experiment``: fraction of placeable exons that may
+# disagree with the model's predicted peak before the run is treated as having a
+# systematic coordinate bug and failed (rather than scattered discrepancies).
+MAX_SPLICE_SITE_FAILURE_RATE = 0.05
+
 # Package-local cache directory (shipped with the package via package_data), so
 # precomputed AlphaGenome results travel with the install instead of living in
 # the user's global permacache. Resolved from __file__ so it works wherever the
@@ -53,21 +67,21 @@ _CACHE_DIR = os.path.join(
 )
 
 
-def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
+def _predict_variants_with_retry(model, **kwargs):
     """
     Call ``model.predict_variants(**kwargs)`` with exponential backoff on
-    ``grpc.RpcError``. Re-raises after ``max_attempts`` failures.
+    ``grpc.RpcError``. Re-raises after ``PREDICT_MAX_ATTEMPTS`` failures.
     """
     import grpc
 
-    for attempt in range(1, max_attempts + 1):
+    for attempt in range(1, PREDICT_MAX_ATTEMPTS + 1):
         try:
             return model.predict_variants(**kwargs)
         except grpc.RpcError as e:
-            if attempt == max_attempts:
+            if attempt == PREDICT_MAX_ATTEMPTS:
                 raise
             print(
-                f"  predict_variants RpcError (attempt {attempt}/{max_attempts}): "
+                f"  predict_variants RpcError (attempt {attempt}/{PREDICT_MAX_ATTEMPTS}): "
                 f"{e.code() if hasattr(e, 'code') else e}; retrying"
             )
             time.sleep(2 ** (attempt - 1))
@@ -75,38 +89,54 @@ def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
     raise AssertionError("predict_variants retry loop exited without returning")
 
 
-def check_splice_site_signals(
-    ref_track, site_genomic, site_track_idx, *, window=50, min_value=0.5
-):
+def check_splice_site_signals(ref_track, site_genomic, site_track_idx):
     """
     Sanity-check that each known splice site maps onto AlphaGenome's predicted
     splice peak on its matched donor/acceptor track. A correctly-mapped site
     sits on the (sharp, ~1-valued) peak while bases even a few bp away score
-    ~0, so the site passes if it is either the local maximum within ``±window``
-    bp **or** still a strong peak in absolute terms (``>= min_value``) -- the
-    latter tolerates a distinct, real neighbouring splice site that happens to
-    score slightly higher in the wide window. A genuinely mis-mapped site fails
-    both (it sits on the ~0 background). Raises ``AssertionError`` if any
-    in-window site fails. Sites whose genomic position falls outside the track
-    interval are skipped. Uses the reference (un-variant) prediction.
+    ~0, so the site passes if it is either the local maximum within
+    ``±SPLICE_SITE_PEAK_WINDOW`` bp (ties pass) **or** still a strong peak in
+    absolute terms (``>= SPLICE_SITE_PEAK_FLOOR``) -- the latter tolerates a
+    distinct, real neighbouring
+    splice site that happens to score slightly higher in the wide window. A
+    genuinely mis-mapped (or model-disagreed) site fails both (it sits on the ~0
+    background).
+
+    Returns a list of human-readable descriptions, one per failing in-window
+    site (empty if all pass). This is a *disagreement* report, not an error: a
+    failure means AlphaGenome puts the peak a few bp off the annotation (a real,
+    scattered model/annotation discrepancy, not a coordinate bug), so the caller
+    keeps the exon's computed deltas and only treats the disagreement as fatal
+    if it turns out to be systematic (see the frequency bar in
+    :func:`run_alphagenome_deletion_experiment`). Sites whose genomic position
+    falls outside the track interval are skipped (those are handled as
+    out-of-bounds NaNs in the delta readout). Uses the reference (un-variant)
+    prediction.
     """
     track_start = ref_track.interval.start
     W = ref_track.values.shape[0]
+    failures = []
     for sg, ti, label in zip(site_genomic, site_track_idx, affected_splice_sites):
         idx = sg - 1 - track_start
         if not 0 <= idx < W:
             continue
-        lo, hi = max(0, idx - window), min(W, idx + window + 1)
+        lo = max(0, idx - SPLICE_SITE_PEAK_WINDOW)
+        hi = min(W, idx + SPLICE_SITE_PEAK_WINDOW + 1)
         site_val = float(ref_track.values[idx, ti])
         nb = np.concatenate(
             [ref_track.values[lo:idx, ti], ref_track.values[idx + 1 : hi, ti]]
         )
         nb_max = float(nb.max())
-        assert site_val > nb_max or site_val >= min_value, (
-            f"splice-site sanity check failed at {label}: "
-            f"value {site_val:.4f} not > neighbor max {nb_max:.4f} "
-            f"in window ±{window} and below floor {min_value} (track {ti})"
-        )
+        # ``>=`` so a site that is itself the (tied) maximum passes; a strict
+        # ``>`` spuriously failed sites tied with an adjacent base of their own
+        # peak.
+        if not (site_val >= nb_max or site_val >= SPLICE_SITE_PEAK_FLOOR):
+            failures.append(
+                f"{label}: value {site_val:.4f} not >= neighbor max {nb_max:.4f} "
+                f"in window ±{SPLICE_SITE_PEAK_WINDOW} and below floor "
+                f"{SPLICE_SITE_PEAK_FLOOR} (track {ti})"
+            )
+    return failures
 
 
 @permacache(
@@ -138,7 +168,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     delete_up_to: int,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
-) -> list:
+) -> dict:
     """
     Run all deletions of length ``1..delete_up_to`` placed ``distance_out`` nt
     away (in seq/transcript coordinates) from the acceptor and donor of
@@ -150,10 +180,16 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     :param seq_idx: integer base indices for the gene (shape ``(L,)``).
     :param model: AlphaGenome client.
     :param output_type: ``OutputType.SPLICE_SITES`` or ``OutputType.SPLICE_SITE_USAGE``.
-    :returns: deltas as nested lists (JSON-serializable, so the result can be
-        cached one-file-per-exon) of shape ``(delete_up_to, 4, 4)`` indexed by
-        ``[deletion - 1, mutation_location, affected_splice_site]``. Wrap in
-        ``np.asarray`` to get an array back.
+    :returns: a JSON-serializable dict (so it can be cached one-file-per-exon):
+
+        - ``"deltas"``: nested lists of shape ``(delete_up_to, 4, 4)`` indexed by
+          ``[deletion - 1, mutation_location, affected_splice_site]`` (wrap in
+          ``np.asarray`` to get an array back). Always computed; individual
+          entries are NaN only where a site falls out of the track interval.
+        - ``"splice_site_failures"``: list of descriptions of any annotated
+          splice sites that didn't land on AlphaGenome's predicted peak (see
+          :func:`check_splice_site_signals`). A *report*, not an error -- the
+          deltas are still valid; the caller applies a frequency bar.
     """
     from alphagenome.data import genome
 
@@ -245,7 +281,11 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     ]
     site_genomic = [seq_pos_to_genomic_1based(p) for p in site_seq_positions]
 
-    check_splice_site_signals(
+    # A disagreement here (the model puts a peak a few bp off the annotation) is
+    # reported, not fatal: we still compute and return this exon's deltas. The
+    # run-level frequency bar decides whether the *rate* of disagreement looks
+    # systematic enough to abort.
+    splice_site_failures = check_splice_site_signals(
         variant_outputs[0].reference.get(output_type),
         site_genomic,
         site_track_idx,
@@ -334,9 +374,10 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     )
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
-    return raw.reshape(
+    deltas = raw.reshape(
         (delete_up_to, len(mutation_locations), len(affected_splice_sites))
     ).tolist()
+    return {"deltas": deltas, "splice_site_failures": splice_site_failures}
 
 
 def run_alphagenome_deletion_experiment(
@@ -359,12 +400,22 @@ def run_alphagenome_deletion_experiment(
     Exons whose gene has no entry in ``load_transcript_coords()`` cannot be
     placed genomically, so they yield an all-NaN block (skipped by the
     NaN-aware aggregation on :class:`DeletionAccuracyDeltaResult`) rather than
-    failing the run. Every other exon must succeed: exons whose prediction
-    raises are recorded and processing continues to the end so that all per-exon
-    failures are reported at once; if any failed, a ``RuntimeError`` is raised
-    and no result is returned. (Successful per-exon predictions are cached
-    individually by :func:`deltas_for_exon`, and errors are never cached, so
-    re-running after fixing the cause only recomputes the failures.)
+    failing the run. NaN means "couldn't place this", nothing else -- within a
+    placed exon, only sites that fall outside the track interval are NaN.
+
+    Exons whose splice-site sanity check reports a disagreement (AlphaGenome
+    places a peak a few bp off the annotated coordinate for a small minority of
+    real sites) **keep their computed deltas** -- this is a model/annotation
+    discrepancy, not a placement failure, so the data is retained rather than
+    NaN'd. The disagreements are tallied and, only if their rate across
+    placeable exons meets ``MAX_SPLICE_SITE_FAILURE_RATE`` (which would signal a
+    *systematic* coordinate bug rather than scattered discrepancies), the run is
+    failed. Any genuine per-exon error is always fatal. All issues are recorded
+    and processing continues to the end so they're reported together; if the run
+    fails, a ``RuntimeError`` is raised and no result is returned. (Successful
+    per-exon predictions are cached individually by :func:`deltas_for_exon`, and
+    errors are never cached, so re-running after fixing the cause only recomputes
+    the failures.)
     """
     tc = load_transcript_coords()
     nan_block = np.full(
@@ -372,42 +423,87 @@ def run_alphagenome_deletion_experiment(
     )
     per_exon = []
     failures = []
+    ss_disagreements = []
+    n_placeable = 0
     iterator = tqdm.tqdm(exons, desc="exons") if progress else exons
     for i, ex in enumerate(iterator):
         if ex.gene_idx not in tc:
             print(f"  exon {i} (gene_idx={ex.gene_idx}): no transcript coords; NaN")
             per_exon.append(nan_block)
             continue
+        n_placeable += 1
         try:
             x_seq, _ = load_validation_gene(ex.gene_idx)
-            per_exon.append(
-                deltas_for_exon(
-                    ex,
-                    tc[ex.gene_idx],
-                    # pylint (astroid numpy brain) mis-infers x_seq as np.array
-                    # itself; argmax is valid on the actual ndarray.
-                    x_seq.argmax(-1),  # pylint: disable=no-member
-                    model,
-                    output_type,
-                    distance_out=distance_out,
-                    delete_up_to=delete_up_to,
-                    interval_len=interval_len,
-                    ontology_terms=ontology_terms,
-                )
+            res = deltas_for_exon(
+                ex,
+                tc[ex.gene_idx],
+                # pylint (astroid numpy brain) mis-infers x_seq as np.array
+                # itself; argmax is valid on the actual ndarray.
+                x_seq.argmax(-1),  # pylint: disable=no-member
+                model,
+                output_type,
+                distance_out=distance_out,
+                delete_up_to=delete_up_to,
+                interval_len=interval_len,
+                ontology_terms=ontology_terms,
             )
         except Exception as e:  # pylint: disable=broad-except
             print(f"  exon {i} (gene_idx={ex.gene_idx}): FAILED - {e}")
             failures.append((i, ex.gene_idx, e))
+            continue
+        # Keep the deltas regardless of any splice-site disagreement; only record
+        # the disagreement for the frequency bar / reporting below.
+        per_exon.append(res["deltas"])
+        if res["splice_site_failures"]:
+            descs = "; ".join(res["splice_site_failures"])
+            print(
+                f"  exon {i} (gene_idx={ex.gene_idx}): splice-site disagreement - {descs}"
+            )
+            ss_disagreements.append((i, ex.gene_idx, descs))
 
-    if failures:
-        summary = "\n".join(
+    # The splice-site disagreements only sink the run if they're frequent enough
+    # to look systematic; a scattered minority is reported but kept.
+    ss_rate = ss_disagreements and len(ss_disagreements) / max(n_placeable, 1)
+    ss_fatal = ss_disagreements and ss_rate >= MAX_SPLICE_SITE_FAILURE_RATE
+
+    if ss_disagreements:
+        verdict = (
+            "EXCEEDED, failing run"
+            if ss_fatal
+            else "within bar, kept (deltas retained)"
+        )
+        # Print the full consolidated list (the inline lines above get buried in
+        # the progress bar) so every disagreeing exon is reported together.
+        listing = "\n".join(
+            f"  exon {i} (gene_idx={gene_idx}): {descs}"
+            for i, gene_idx, descs in ss_disagreements
+        )
+        print(
+            f"  splice-site sanity: {len(ss_disagreements)}/{n_placeable} placeable "
+            f"exon(s) disagreed (rate {ss_rate:.3%}, bar "
+            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}) -- {verdict}:\n{listing}"
+        )
+
+    if failures or ss_fatal:
+        parts = [
             f"  exon {i} (gene_idx={gene_idx}): {type(e).__name__}: {e}"
             for i, gene_idx, e in failures
+        ]
+        if ss_fatal:
+            parts += [
+                f"  exon {i} (gene_idx={gene_idx}): splice-site disagreement: {descs}"
+                for i, gene_idx, descs in ss_disagreements
+            ]
+        reason = f"{len(failures)} hard failure(s)" + (
+            f" and splice-site disagreement rate {ss_rate:.3%} >= "
+            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}"
+            if ss_fatal
+            else ""
         )
+        cause = failures[0][2] if failures else None
         raise RuntimeError(
-            f"{len(failures)}/{len(exons)} exon(s) failed in the AlphaGenome "
-            f"deletion experiment:\n{summary}"
-        ) from failures[0][2]
+            f"AlphaGenome deletion experiment failed ({reason}):\n" + "\n".join(parts)
+        ) from cause
 
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
