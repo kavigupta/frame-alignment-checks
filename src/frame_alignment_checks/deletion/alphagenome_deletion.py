@@ -17,7 +17,11 @@ from alphagenome.models.dna_output import OutputType
 from permacache import permacache, stable_hash
 
 from ..coding_exon import CodingExon
-from ..load_data import load_transcript_coords, load_validation_gene
+from ..load_data import (
+    load_long_canonical_internal_coding_exons,
+    load_transcript_coords,
+    load_validation_gene,
+)
 from .delete import (
     DeletionAccuracyDeltaResult,
     affected_splice_sites,
@@ -395,3 +399,49 @@ def run_alphagenome_deletion_experiment(
 
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
+
+
+def alphagenome_deletion_experiment(
+    model: dna_client.DnaClient,
+    output_type: OutputType,
+    *,
+    distance_out: int,
+    delete_up_to: int,
+    limit: int = None,
+    interval_len: int = 131072,
+    ontology_terms: Sequence[str] = ("UBERON:0001157",),
+    progress: bool = True,
+) -> DeletionAccuracyDeltaResult:
+    """
+    Full AlphaGenome deletion experiment: the AlphaGenome analogue of the CNN
+    path's :func:`fac.deletion.experiment`. Loads the canonical internal coding
+    exons itself (rather than taking an explicit list, as
+    :func:`run_alphagenome_deletion_experiment` does) and runs every
+    ``1..delete_up_to`` nt deletion around their splice sites through the model.
+
+    The ``exp1``/``exp2`` scripts are smoke-test drivers that inline this same
+    data loading but cap at a handful of exons; this runs the whole set.
+
+    :param model: AlphaGenome client. Must be created with an explicit
+        ``model_version`` so per-exon cached results don't collide across folds.
+    :param output_type: ``OutputType.SPLICE_SITES`` or
+        ``OutputType.SPLICE_SITE_USAGE``.
+    :param distance_out: distance (nt) from each splice site at which deletions
+        are placed.
+    :param delete_up_to: longest deletion length to run (lengths ``1..delete_up_to``).
+    :param limit: if given, run only the first ``limit`` exons (e.g. for a quick
+        check); defaults to all canonical internal coding exons.
+    :returns: a :class:`DeletionAccuracyDeltaResult` with ``raw_data`` of shape
+        ``(1, num_exons, delete_up_to, 4, 4)``.
+    """
+    exons = load_long_canonical_internal_coding_exons()[:limit]
+    return run_alphagenome_deletion_experiment(
+        exons,
+        model,
+        output_type,
+        distance_out=distance_out,
+        delete_up_to=delete_up_to,
+        interval_len=interval_len,
+        ontology_terms=ontology_terms,
+        progress=progress,
+    )
