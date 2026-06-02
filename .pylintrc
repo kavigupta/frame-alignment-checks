@@ -63,7 +63,9 @@ ignore-patterns=^\.#
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis). It
 # supports qualified module names, as well as Unix pattern matching.
-ignored-modules=
+# alphagenome (and its grpc dependency) is an optional extra that is not
+# installed in CI, so tell pylint not to flag its lazy imports as import-error.
+ignored-modules=alphagenome,grpc
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().

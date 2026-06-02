@@ -4,16 +4,14 @@ AlphaGenome batch variant interface and return the per-site delta table as
 a ``DeletionAccuracyDeltaResult``.
 """
 
+from __future__ import annotations
+
 import os
 import time
-from typing import List, Sequence
+from typing import TYPE_CHECKING, List, Sequence
 
-import grpc
 import numpy as np
 import tqdm
-from alphagenome.data import genome
-from alphagenome.models import dna_client
-from alphagenome.models.dna_output import OutputType
 from permacache import permacache, stable_hash
 
 from ..coding_exon import CodingExon
@@ -28,6 +26,14 @@ from .delete import (
     deletion_ranges_for_exon,
     mutation_locations,
 )
+
+if TYPE_CHECKING:
+    # alphagenome requires Python >=3.10 and is an optional extra; these imports
+    # are only needed for type annotations (kept lazy via ``from __future__
+    # import annotations``). The runtime imports live inside the functions that
+    # actually use alphagenome, so the module imports fine without it installed.
+    from alphagenome.models import dna_client
+    from alphagenome.models.dna_output import OutputType
 
 # donor track for donor sites, acceptor track for acceptor sites; aligned with
 # ``affected_splice_sites`` = ["P5'SS", "3'SS", "5'SS", "N3'SS"].
@@ -52,6 +58,8 @@ def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
     Call ``model.predict_variants(**kwargs)`` with exponential backoff on
     ``grpc.RpcError``. Re-raises after ``max_attempts`` failures.
     """
+    import grpc
+
     for attempt in range(1, max_attempts + 1):
         try:
             return model.predict_variants(**kwargs)
@@ -63,6 +71,8 @@ def _predict_variants_with_retry(model, *, max_attempts=5, **kwargs):
                 f"{e.code() if hasattr(e, 'code') else e}; retrying"
             )
             time.sleep(2 ** (attempt - 1))
+    # Unreachable: the final attempt above either returns or re-raises.
+    raise AssertionError("predict_variants retry loop exited without returning")
 
 
 def check_splice_site_signals(
@@ -110,14 +120,14 @@ def check_splice_site_signals(
         # the served model identity (e.g. "ALL_FOLDS"/"FOLD_0"); the client must
         # have been created with an explicit model_version so the cache key
         # distinguishes folds rather than collapsing them onto a shared None.
-        model=lambda m: m._model_version,
-        output_type=lambda o: str(o),
-        ontology_terms=lambda t: list(t),
+        model=lambda m: m._model_version,  # pylint: disable=protected-access
+        output_type=str,
+        ontology_terms=list,
     ),
     shelf_type="individual-file",
     driver="json",
 )
-def deltas_for_exon(
+def deltas_for_exon(  # pylint: disable=too-many-statements
     exon: CodingExon,
     gene_info: dict,
     seq_idx: np.ndarray,
@@ -145,10 +155,12 @@ def deltas_for_exon(
         ``[deletion - 1, mutation_location, affected_splice_site]``. Wrap in
         ``np.asarray`` to get an array back.
     """
+    from alphagenome.data import genome
+
     # The model identity is part of the cache key, so the client must declare an
     # explicit model_version -- otherwise results from different folds would
     # collide under a shared ``None`` key.
-    assert model._model_version is not None, (
+    assert model._model_version is not None, (  # pylint: disable=protected-access
         "model was created without an explicit model_version; pass "
         "model_version=... to dna_client.create() so cached results don't "
         "collide across folds"
@@ -173,9 +185,7 @@ def deltas_for_exon(
             return gene_info["hg38_start"] + pos
         return gene_info["hg38_end"] - pos
 
-    exon_mid_0based = (
-        seq_pos_to_genomic_1based((exon.acceptor + exon.donor) // 2) - 1
-    )
+    exon_mid_0based = seq_pos_to_genomic_1based((exon.acceptor + exon.donor) // 2) - 1
     interval = genome.Interval(
         chromosome=gene_info["chrom"],
         start=exon_mid_0based - interval_len // 2,
@@ -325,7 +335,7 @@ def deltas_for_exon(
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
     return raw.reshape(
-        delete_up_to, len(mutation_locations), len(affected_splice_sites)
+        (delete_up_to, len(mutation_locations), len(affected_splice_sites))
     ).tolist()
 
 
