@@ -138,17 +138,19 @@ def alphagenome_calibration_thresholds(
     dropped tails are exactly the positions that would otherwise sit near a
     window edge, so the distributional threshold is unaffected.
 
-    Thresholds are output-type-specific (``SPLICE_SITES`` and
-    ``SPLICE_SITE_USAGE`` live on different scales), ontology-specific, and
-    window-specific, so the cache is keyed on ``output_type``, ``ontology_terms``
-    and ``interval_len`` alongside the model fold. The same ``ontology_terms`` and
+    Thresholds are output-type-specific, ontology-specific, and window-specific,
+    so the cache is keyed on ``output_type``, ``ontology_terms`` and
+    ``interval_len`` alongside the model fold. The same ``ontology_terms`` and
     ``interval_len`` must be used here and wherever the thresholds are applied,
     for them to match the values they're thresholding.
 
     :param model: AlphaGenome client. Must be created with an explicit
         ``model_version`` so cached thresholds don't collide across folds.
-    :param output_type: ``OutputType.SPLICE_SITES`` or
-        ``OutputType.SPLICE_SITE_USAGE``.
+    :param output_type: ``OutputType.SPLICE_SITES`` -- the per-base donor/
+        acceptor probability tracks. ``SPLICE_SITE_USAGE`` is not supported: its
+        tracks are per-assay, not split into donor/acceptor, so there is no
+        donor/acceptor track to threshold (calibration would raise looking for
+        one).
     :param interval_len: AlphaGenome input window length (a supported size).
     :param ontology_terms: ontology terms requested from the model.
     :param limit: if given, calibrate on only the first ``limit`` genes.

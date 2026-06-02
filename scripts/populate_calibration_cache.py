@@ -1,11 +1,15 @@
 """
 Populate the AlphaGenome splice-site calibration cache.
 
-Runs ``alphagenome_calibration_thresholds`` for each splice-site output type so
-the donor/acceptor decision thresholds are computed once and cached (package-
+Runs ``alphagenome_calibration_thresholds`` for the ``SPLICE_SITES`` output type
+so the donor/acceptor decision thresholds are computed once and cached (package-
 locally, via permacache) for later reuse. Safe to re-run: cached results are
 returned instantly, so only missing (model fold / output type / ontology /
 window) combinations are recomputed.
+
+Only ``SPLICE_SITES`` is calibrated: ``SPLICE_SITE_USAGE`` has no donor/acceptor
+tracks (its tracks are per-assay), so there is nothing donor/acceptor-typed to
+threshold.
 
 Usage::
 
@@ -26,7 +30,7 @@ from frame_alignment_checks.alphagenome_calibration import (
 # ---------- config ----------
 INTERVAL_LEN = 131072
 ONTOLOGY_TERMS = ("UBERON:0001157",)
-OUTPUT_TYPES = [OutputType.SPLICE_SITES, OutputType.SPLICE_SITE_USAGE]
+OUTPUT_TYPES = [OutputType.SPLICE_SITES]
 # ALL_FOLDS so the cache key is an explicit, non-None model version.
 MODEL_VERSION = dna_client.ModelVersion.ALL_FOLDS
 
