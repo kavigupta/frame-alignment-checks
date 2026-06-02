@@ -166,7 +166,9 @@ def alphagenome_calibration_thresholds(
     )
 
     tc = load_transcript_coords()
-    gene_idxs = sorted({ex.gene_idx for ex in load_long_canonical_internal_coding_exons()})
+    gene_idxs = sorted(
+        {ex.gene_idx for ex in load_long_canonical_internal_coding_exons()}
+    )
     gene_idxs = [g for g in gene_idxs if g in tc][:limit]
 
     # values[type] collects predicted readouts at every labelled position;
@@ -179,8 +181,11 @@ def alphagenome_calibration_thresholds(
     iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
     for gene_idx in iterator:
         gene_info = tc[gene_idx]
+        # pylint (astroid numpy brain) mis-infers y as np.array itself, so it
+        # flags .shape (no-member) and y[...] (unsubscriptable-object) below; y
+        # is the actual label ndarray from load_validation_gene.
         _, y = load_validation_gene(gene_idx)
-        gene_len = y.shape[0]
+        gene_len = y.shape[0]  # pylint: disable=no-member
 
         # 1-based genomic midpoint of the gene, matching the seq->genomic
         # mapping below (hg38_start/hg38_end are the gene's first/last base). Only
@@ -200,7 +205,10 @@ def alphagenome_calibration_thresholds(
         ss = pred.get(output_type)
         track_start = ss.interval.start
         W = ss.values.shape[0]
-        ti = {t: _find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES}
+        ti = {
+            t: _find_strand_track(ss, t, gene_info["strand"])
+            for t in _CALIB_TRACK_TYPES
+        }
 
         # genomic 1-based position of each seq index, vectorised. The gene
         # sequence spans exactly [hg38_start, hg38_end], so seq position 0 is the
@@ -215,6 +223,8 @@ def alphagenome_calibration_thresholds(
         idx_ib = idx[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
+            # y is mis-inferred as np.array (see note above); allow the subscript.
+            # pylint: disable=unsubscriptable-object
             truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
 
     result = {}
