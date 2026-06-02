@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Tuple
 
 import numpy as np
 import tqdm
@@ -239,3 +239,47 @@ def alphagenome_calibration_thresholds(
         result[f"frac_{t}"] = frac
         result[f"recall_{t}"] = recall
     return result
+
+
+# Channel order shared with the CNN framework: y's label channels are
+# (null, acceptor, donor), so the per-non-null-channel arrays returned below --
+# and ModelToAnalyze.thresholds -- run [acceptor, donor].
+_THRESHOLD_ORDER = ("acceptor", "donor")
+
+
+def alphagenome_calibration_accuracy_and_thresholds(
+    model: dna_client.DnaClient,
+    output_type: OutputType,
+    **kwargs,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    AlphaGenome analogue of
+    :func:`fac.models.calibration_accuracy_and_thresholds`, returning the same
+    ``(acc, thresholds)`` shape so AlphaGenome calibration drops into the same
+    downstream machinery as the CNN models.
+
+    This is the intended public entry point: it wraps the lower-level, cached
+    :func:`alphagenome_calibration_thresholds` (which returns a richer JSON dict
+    keyed by track-type name, plus base rates) and reshapes it into two length-2
+    arrays ordered ``[acceptor, donor]`` -- matching ``y``'s non-null label
+    channels and :attr:`fac.models.ModelToAnalyze.thresholds` (one threshold per
+    non-null channel, acceptor then donor). Build the array via this explicit
+    order rather than the dict's insertion order, which is donor-first.
+
+    :param model: AlphaGenome client (see
+        :func:`alphagenome_calibration_thresholds`).
+    :param output_type: ``OutputType.SPLICE_SITES`` or
+        ``OutputType.SPLICE_SITE_USAGE``.
+    :param kwargs: forwarded verbatim to
+        :func:`alphagenome_calibration_thresholds` (``interval_len``,
+        ``ontology_terms``, ``limit``, ``progress``).
+    :returns: ``(acc, thresholds)``, each an ``np.ndarray`` of shape ``(2,)`` in
+        ``[acceptor, donor]`` order. ``acc`` is the per-channel recall at the
+        chosen threshold; ``thresholds`` are the per-channel decision thresholds
+        in the raw ``output_type`` value scale (not softmax probabilities, unlike
+        the CNN thresholds), so they apply only to that same ``output_type``.
+    """
+    raw = alphagenome_calibration_thresholds(model, output_type, **kwargs)
+    acc = np.array([raw[f"recall_{t}"] for t in _THRESHOLD_ORDER])
+    thresholds = np.array([raw[t] for t in _THRESHOLD_ORDER])
+    return acc, thresholds
