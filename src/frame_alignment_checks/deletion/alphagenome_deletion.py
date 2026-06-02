@@ -103,9 +103,10 @@ def check_splice_site_signals(
         # anyway so the key faithfully reflects the actual inputs.
         gene_info=stable_hash,
         seq_idx=stable_hash,
-        # the served model identity (e.g. "ALL_FOLDS"/"FOLD_0"), or None if the
-        # client was created without an explicit model_version.
-        model=lambda m: getattr(m, "_model_version", None),
+        # the served model identity (e.g. "ALL_FOLDS"/"FOLD_0"); the client must
+        # have been created with an explicit model_version so the cache key
+        # distinguishes folds rather than collapsing them onto a shared None.
+        model=lambda m: m._model_version,
         output_type=lambda o: str(o),
         ontology_terms=lambda t: list(t),
     ),
@@ -140,6 +141,21 @@ def deltas_for_exon(
         ``[deletion - 1, mutation_location, affected_splice_site]``. Wrap in
         ``np.asarray`` to get an array back.
     """
+    # The model identity is part of the cache key, so the client must declare an
+    # explicit model_version -- otherwise results from different folds would
+    # collide under a shared ``None`` key.
+    assert model._model_version is not None, (
+        "model was created without an explicit model_version; pass "
+        "model_version=... to dna_client.create() so cached results don't "
+        "collide across folds"
+    )
+    # The deletions reach out ``distance_out + delete_up_to`` nt on each side of
+    # both splice sites; require they stay clear of the exon center (and of each
+    # other) just as ``basic_deletion_experiment`` does for the CNN path.
+    assert (distance_out + delete_up_to) * 2 < exon.donor - exon.acceptor, (
+        f"This deletion experiment (distance_out={distance_out}, "
+        f"delete_up_to={delete_up_to}) is too large for the exon {exon}"
+    )
     strand = gene_info["strand"]
 
     def seq_slice_to_ref_bases(start, end):
@@ -160,6 +176,10 @@ def deltas_for_exon(
         chromosome=gene_info["chrom"],
         start=exon_mid_0based - interval_len // 2,
         end=exon_mid_0based + interval_len // 2,
+    )
+    assert interval.start >= 0, (
+        f"interval start {interval.start} < 0 for exon {exon}: the "
+        f"{interval_len} nt window runs off the start of {gene_info['chrom']}"
     )
 
     variants = []

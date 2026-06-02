@@ -39,6 +39,8 @@ setuptools.setup(
         "run-batched>=1.0.2",
         "matplotlib_venn>=1.1.1",
         "dconstruct>=1.0.0",
+        "alphagenome",
+        "grpcio",
     ],
     # documentation
     project_urls={

@@ -27,7 +27,7 @@ OUTPUT_TYPE = OutputType.SPLICE_SITES
 with open(os.path.expanduser("~/.alphagenome")) as f:
     API_KEY = f.read().strip()
 
-model = dna_client.create(API_KEY)
+model = dna_client.create(API_KEY, model_version=dna_client.ModelVersion.ALL_FOLDS)
 
 exons = load_long_canonical_internal_coding_exons()[:N_EXONS]
 
