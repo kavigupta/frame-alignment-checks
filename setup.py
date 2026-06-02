@@ -13,7 +13,13 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     package_data={
-        "frame_alignment_checks.data": ["**/*.npz", "**/*.pkl", "**/*.xlsx", "**/*.gz"]
+        "frame_alignment_checks.data": [
+            "**/*.npz",
+            "**/*.pkl",
+            "**/*.xlsx",
+            "**/*.gz",
+            "**/*.json",
+        ]
     },
     include_package_data=True,
     classifiers=[
@@ -34,6 +40,13 @@ setuptools.setup(
         "matplotlib_venn>=1.1.1",
         "dconstruct>=1.0.0",
     ],
+    # alphagenome requires Python >=3.10, so it is an optional extra rather than
+    # a hard dependency: ``pip install frame-alignment-checks[alphagenome]``.
+    # The AlphaGenome deletion code imports it lazily so the rest of the package
+    # (and Python 3.9) keeps working without it.
+    extras_require={
+        "alphagenome": ["alphagenome", "grpcio"],
+    },
     # documentation
     project_urls={
         "Documentation": "https://frame-alignment-checks.readthedocs.io/en/latest/#",
