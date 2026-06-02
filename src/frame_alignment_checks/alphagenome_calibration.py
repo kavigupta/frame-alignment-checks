@@ -99,6 +99,10 @@ def _find_strand_track(ss, st_type, strand):
         model=lambda m: m._model_version,  # pylint: disable=protected-access
         output_type=str,
         ontology_terms=list,
+        # progress only controls the tqdm bar, not the result, so keep it out of
+        # the cache key (collapse to None) to avoid fragmenting the cache across
+        # progress=True/False calls.
+        progress=lambda _: None,
     ),
     shelf_type="individual-file",
     driver="json",
@@ -178,8 +182,11 @@ def alphagenome_calibration_thresholds(
         _, y = load_validation_gene(gene_idx)
         gene_len = y.shape[0]
 
-        mid_genomic_0based = (gene_info["hg38_start"] + gene_info["hg38_end"]) // 2
-        start = max(0, mid_genomic_0based - interval_len // 2)
+        # 1-based genomic midpoint of the gene, matching the seq->genomic
+        # mapping below (hg38_start/hg38_end are the gene's first/last base). Only
+        # used to centre the window, so a 1-base offset is immaterial here.
+        mid_genomic_1based = (gene_info["hg38_start"] + gene_info["hg38_end"]) // 2
+        start = max(0, mid_genomic_1based - interval_len // 2)
         interval = genome.Interval(
             chromosome=gene_info["chrom"], start=start, end=start + interval_len
         )
