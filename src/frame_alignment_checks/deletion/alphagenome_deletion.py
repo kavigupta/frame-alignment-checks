@@ -384,7 +384,9 @@ def run_alphagenome_deletion_experiment(
                 deltas_for_exon(
                     ex,
                     tc[ex.gene_idx],
-                    x_seq.argmax(-1),
+                    # pylint (astroid numpy brain) mis-infers x_seq as np.array
+                    # itself; argmax is valid on the actual ndarray.
+                    x_seq.argmax(-1),  # pylint: disable=no-member
                     model,
                     output_type,
                     distance_out=distance_out,
