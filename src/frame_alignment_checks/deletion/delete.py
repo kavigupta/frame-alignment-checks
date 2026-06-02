@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Tuple
 
@@ -21,6 +22,17 @@ mutation_locations = [
 ]
 
 affected_splice_sites = ["P5'SS", "3'SS", "5'SS", "N3'SS"]
+
+
+def _nanmean_quiet(a, axis):
+    """
+    ``np.nanmean`` over ``axis`` that returns NaN (instead of raising a
+    ``RuntimeWarning``) for slices that are entirely NaN. Equivalent to
+    ``np.mean`` when there are no NaNs.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        return np.nanmean(a, axis)
 
 
 @dataclass
@@ -53,13 +65,15 @@ class DeletionAccuracyDeltaResult:
 
         :param num_deletions: The number of deletions to consider.
         :return: The mean effect matrix. Shape (4, 4). The rows represent deletion
-            locations, and the columns represent affected splice sites.
+            locations, and the columns represent affected splice sites. NaN
+            entries (e.g. splice sites outside a prediction window) are skipped;
+            a cell is NaN only if every contributing value is NaN.
         """
         if not 1 <= num_deletions <= self.raw_data.shape[2]:
             raise ValueError(
                 f"num_deletions should be between 1 and {self.raw_data.shape[2]}, inclusive"
             )
-        return self.raw_data[:, :, num_deletions - 1].mean((0, 1))
+        return _nanmean_quiet(self.raw_data[:, :, num_deletions - 1], (0, 1))
 
     def mean_effect_series(
         self, mutation_location: str, affected_splice_site: str, mean=True
@@ -74,14 +88,15 @@ class DeletionAccuracyDeltaResult:
         :param mean: Whether to take the mean across all exons.
         :return: The mean effect by deletion location. This is not aggregated over
             deletions or seeds. Shape: ``(num_seeds, num_deletions)``. If ``mean`` is
-            False, the shape is ``(num_seeds, num_exons, num_deletions)``.
+            False, the shape is ``(num_seeds, num_exons, num_deletions)``. When
+            ``mean`` is True, NaN entries are skipped (mean over the finite exons).
         """
         deletion_location_idx = mutation_locations.index(mutation_location)
         affected_splice_site_idx = affected_splice_sites.index(affected_splice_site)
         result = self.raw_data[:, :, :, deletion_location_idx, affected_splice_site_idx]
         if not mean:
             return result
-        return result.mean(1)
+        return _nanmean_quiet(result, 1)
 
     def mean_effect_masked(
         self,
@@ -111,14 +126,16 @@ class DeletionAccuracyDeltaResult:
         assert mask.shape == mask_shape
         selected_data = np.stack(
             [
-                np.mean(
-                    [
-                        self.mean_effect_series(
-                            deletion_location, affected_splice_site, mean=False
-                        )
-                        for affected_splice_site in affected_splice_sites_to_use
-                    ],
-                    axis=0,
+                _nanmean_quiet(
+                    np.stack(
+                        [
+                            self.mean_effect_series(
+                                deletion_location, affected_splice_site, mean=False
+                            )
+                            for affected_splice_site in affected_splice_sites_to_use
+                        ]
+                    ),
+                    0,
                 )
                 for deletion_location in mutation_locations_to_use
             ],
@@ -126,13 +143,16 @@ class DeletionAccuracyDeltaResult:
         )
         # selecetd_data is of shape (num_seeds, num_exons, num_deletions, num_deletion_locations)
         assert selected_data.shape[1:] == mask.shape
+        # NaN data points (e.g. splice sites outside a prediction window) are
+        # excluded from both numerator and denominator, rather than poisoning
+        # the average. The denominator is therefore per-seed.
+        finite = np.isfinite(selected_data)
         # numerator aggregates over exon_id and deletion_location
-        numer = (selected_data * mask).sum((1, 3))
-        # denominator aggregates over the same
-        denom = mask.sum((0, 2))
-        frac = numer.copy()
-        frac[:, denom > 0] /= denom[denom > 0]
-        frac[:, denom == 0] = np.nan
+        numer = (np.where(finite, selected_data, 0.0) * mask).sum((1, 3))
+        # denominator aggregates over the same, counting only finite, masked entries
+        denom = (finite * mask).sum((1, 3))
+        frac = np.full(numer.shape, np.nan, dtype=np.float64)
+        np.divide(numer, denom, out=frac, where=denom > 0)
         return frac
 
 
@@ -264,6 +284,27 @@ def basic_deletion_experiment_multi(
     return np.array(res_base), np.array(res_del), np.array(metas)
 
 
+def deletion_ranges_for_exon(ex, *, distance_out, delete_up_to):
+    """
+    The half-open ``(start, end)`` sequence-coordinate ranges to delete around
+    an exon's splice sites, for deletion lengths ``1..delete_up_to``.
+
+    Ordered as ``[delete_len][mutation_location]`` where mutation_location
+    follows ``mutation_locations`` =
+    ``[u.s. of 3'SS, d.s. of 3'SS, u.s. of 5'SS, d.s. of 5'SS]`` (i.e. for each
+    of the acceptor (3'SS) then donor (5'SS), the upstream then downstream
+    range ``distance_out`` nt away). Length ``delete_up_to * 4``.
+    """
+    ranges = []
+    for delete_len in range(1, delete_up_to + 1):
+        for site in (ex.acceptor, ex.donor):
+            ranges.append((site - distance_out - delete_len, site - distance_out))
+            ranges.append(
+                (site + distance_out + 1, site + distance_out + 1 + delete_len)
+            )
+    return ranges
+
+
 def basic_deletion_experiment(
     ex, model, model_cl, repair_strategy_spec, *, distance_out, delete_up_to=9
 ):
@@ -283,19 +324,9 @@ def basic_deletion_experiment(
     ) * 2 < ex.donor - ex.acceptor, (
         f"This deletion experiment {distance_out} is too large for the exon {ex}"
     )
-    deletion_ranges_incl = []
-    for delete in range(1, delete_up_to + 1):
-        deletion_ranges_incl.extend(
-            [
-                (ex.acceptor - distance_out - delete, ex.acceptor - distance_out - 1),
-                (ex.acceptor + distance_out + 1, ex.acceptor + distance_out + delete),
-                (ex.donor - distance_out - delete, ex.donor - distance_out - 1),
-                (ex.donor + distance_out + 1, ex.donor + distance_out + delete),
-            ]
-        )
-    deletion_ranges_half_excl = [
-        (start, end + 1) for start, end in deletion_ranges_incl
-    ]
+    deletion_ranges_half_excl = deletion_ranges_for_exon(
+        ex, distance_out=distance_out, delete_up_to=delete_up_to
+    )
     yps, metas = deletion_experiment(
         ex, model, model_cl, deletion_ranges_half_excl, repair_strategy_spec
     )
