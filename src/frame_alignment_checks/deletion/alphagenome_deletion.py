@@ -55,6 +55,15 @@ SPLICE_SITE_PEAK_FLOOR = 0.5
 # disagree with the model's predicted peak before the run is treated as having a
 # systematic coordinate bug and failed (rather than scattered discrepancies).
 MAX_SPLICE_SITE_FAILURE_RATE = 0.05
+# Frameshift guard in ``deltas_for_exon`` (alt track left-shifted by del_len,
+# google-deepmind/alphagenome issue #23). A central peak only votes if it is
+# sharp at the del_len scale (ref >= SHARPNESS * neighbor) and largely survived
+# the deletion (max(shifted, unshifted) alt >= SURVIVAL * ref); the guard fails
+# only if at least MAX_FLIP_RATE of the voting peaks prefer the un-shifted
+# readout (which would mean a release fixed the frameshift).
+FRAMESHIFT_PEAK_SHARPNESS = 2
+FRAMESHIFT_PEAK_SURVIVAL = 0.5
+FRAMESHIFT_MAX_FLIP_RATE = 0.25
 
 # Package-local cache directory (shipped with the package via package_data), so
 # precomputed AlphaGenome results travel with the install instead of living in
@@ -333,7 +342,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
 
             # Frameshift guard. Only the central acceptor/donor (si 1, 2) are
             # validated sharp peaks. Require a peak that is sharp at the del_len
-            # scale in the reference (rv >= 2*neighbor) and that largely
+            # scale in the reference (rv >= SHARPNESS*neighbor) and that largely
             # survived the deletion, so the shifted-vs-unshifted comparison is
             # well-defined; otherwise this (vi, si) just doesn't vote.
             if shifted and si in (1, 2) and rv > 0 and idx + del_len < W:
@@ -342,7 +351,10 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
                     float(ref_ss.values[idx + del_len, ti]),
                 )
                 unshifted = float(alt_ss.values[idx, ti])
-                if rv >= 2 * nb and max(av, unshifted) >= 0.5 * rv:
+                if (
+                    rv >= FRAMESHIFT_PEAK_SHARPNESS * nb
+                    and max(av, unshifted) >= FRAMESHIFT_PEAK_SURVIVAL * rv
+                ):
                     shifted_err = abs(av - rv)
                     unshifted_err = abs(unshifted - rv)
                     passed = shifted_err <= unshifted_err
@@ -360,16 +372,18 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
 
     # No qualifying peak is vacuously fine (others vote). A real upstream fix
     # flips essentially every qualifying peak, so only error when a substantial
-    # fraction (>= 25%) flip; isolated flips on weak peaks are noise.
+    # fraction (>= FRAMESHIFT_MAX_FLIP_RATE) flip; isolated flips on weak peaks
+    # are noise.
     flipped = "".join(f"\n    - {d}" for ok, d in frameshift_diag if not ok)
     n_fail = frameshift_checks.count(False)
     n_total = len(frameshift_checks)
-    assert n_total == 0 or n_fail < 0.25 * n_total, (
+    assert n_total == 0 or n_fail < FRAMESHIFT_MAX_FLIP_RATE * n_total, (
         "AlphaGenome alt track no longer appears left-shifted by del_len: the "
         "shifted readout failed to match the reference splice peak better than "
-        f"the un-shifted readout in {n_fail}/{n_total} checks (>= 25%). If a "
-        "release fixed the deletion frameshift (google-deepmind/alphagenome "
-        "issue #23), drop the idx-del_len correction in deltas_for_exon. "
+        f"the un-shifted readout in {n_fail}/{n_total} checks "
+        f"(>= {FRAMESHIFT_MAX_FLIP_RATE:.0%}). If a release fixed the deletion "
+        "frameshift (google-deepmind/alphagenome issue #23), drop the "
+        "idx-del_len correction in deltas_for_exon. "
         f"Flipped peak(s):{flipped}"
     )
 
