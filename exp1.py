@@ -37,6 +37,9 @@ result = run_alphagenome_deletion_experiment(
     OUTPUT_TYPE,
     distance_out=DISTANCE_OUT,
     delete_up_to=DELETE_UP_TO,
+    # continuous alt - ref readout delta (the table below); the binary
+    # call-delta (default) is the analogue used by the full experiment.
+    binary_metric=False,
     interval_len=INTERVAL_LEN,
 )
 

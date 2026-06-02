@@ -5,6 +5,11 @@ types, and print the mean delta table for each.
 
 Unlike the exp1/exp2 smoke tests, this loads the whole canonical exon set (via
 ``fac.deletion.alphagenome_deletion_experiment``) rather than a small slice.
+
+Reports the calibrated binary call-delta (the default ``binary_metric=True``,
+the analogue of the CNN ``fac.deletion.experiment``). The first run per output
+type calibrates donor/acceptor thresholds over the validation genes (cached
+thereafter); pass ``binary_metric=False`` for the raw continuous readout delta.
 """
 
 import os
