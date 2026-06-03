@@ -27,32 +27,21 @@ from frame_alignment_checks.alphagenome_calibration import (
     alphagenome_calibration_thresholds,
 )
 
-# ---------- config ----------
-INTERVAL_LEN = 131072
-ONTOLOGY_TERMS = ("UBERON:0001157",)
-OUTPUT_TYPES = [OutputType.SPLICE_SITES]
 # ALL_FOLDS so the cache key is an explicit, non-None model version.
-MODEL_VERSION = dna_client.ModelVersion.ALL_FOLDS
-
-# ---------- setup ----------
 with open(os.path.expanduser("~/.alphagenome")) as f:
     API_KEY = f.read().strip()
 
-model = dna_client.create(API_KEY, model_version=MODEL_VERSION)
+model = dna_client.create(API_KEY, model_version=dna_client.ModelVersion.ALL_FOLDS)
 
-for output_type in OUTPUT_TYPES:
-    print(f"\n===== {output_type} =====")
-    thresholds = alphagenome_calibration_thresholds(
-        model,
-        output_type,
-        interval_len=INTERVAL_LEN,
-        ontology_terms=ONTOLOGY_TERMS,
+# interval_len and ontology_terms are left at alphagenome_calibration_thresholds'
+# defaults; the deletion experiment must use those same defaults to match.
+thresholds = alphagenome_calibration_thresholds(model, OutputType.SPLICE_SITES)
+
+for track_type in ("donor", "acceptor"):
+    print(
+        f"  {track_type:>8s}: threshold {thresholds[track_type]:.6f}  "
+        f"(base rate {thresholds[f'frac_{track_type}']:.3e}, "
+        f"recall {thresholds[f'recall_{track_type}']:.3f})"
     )
-    for track_type in ("donor", "acceptor"):
-        print(
-            f"  {track_type:>8s}: threshold {thresholds[track_type]:.6f}  "
-            f"(base rate {thresholds[f'frac_{track_type}']:.3e}, "
-            f"recall {thresholds[f'recall_{track_type}']:.3f})"
-        )
 
 print("\nDone.")
