@@ -1,8 +1,9 @@
 import gzip
+import json
 import pickle
 from functools import lru_cache
 from importlib.resources import as_file, files
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -69,6 +70,22 @@ def load_poison_exon_sequence(gene_spec, acc, don, model_cl):
     text = pe_data["gene_sequences"][gene_spec, acc, don]
     text = text[remove : text.shape[0] - remove]
     return text
+
+
+@lru_cache(None)
+def load_transcript_coords() -> Dict[int, dict]:
+    """
+    Load transcript coordinates for validation genes.
+
+    Returns a dict mapping gene_idx (int) to a dict with keys:
+        gene, transcript, chrom, strand, hg19_start, hg19_end, hg38_start, hg38_end.
+    """
+    with as_file(
+        files(data).joinpath("relevant_validation_genes_transcript_coords.json")
+    ) as path:
+        with open(path) as f:
+            raw = json.load(f)
+    return {int(k): v for k, v in raw.items()}
 
 
 def load_nve_descriptors():
