@@ -22,6 +22,12 @@ DELETE_UP_TO = 6
 N_EXONS = 200
 INTERVAL_LEN = 131072
 OUTPUT_TYPE = OutputType.SPLICE_SITE_USAGE
+# When True, threshold each site's ref/alt readout at its calibrated
+# donor/acceptor decision threshold and report the binary call-delta in
+# {-1, 0, +1}; the thresholds are calibrated once (and cached) via
+# alphagenome_calibration_thresholds. Set False for the raw continuous
+# alt - ref readout delta.
+BINARY_METRIC = True
 
 # ---------- setup ----------
 with open(os.path.expanduser("~/.alphagenome")) as f:
@@ -37,9 +43,7 @@ result = run_alphagenome_deletion_experiment(
     OUTPUT_TYPE,
     distance_out=DISTANCE_OUT,
     delete_up_to=DELETE_UP_TO,
-    # continuous alt - ref readout delta (the table below); the binary
-    # call-delta (default) is the analogue used by the full experiment.
-    binary_metric=False,
+    binary_metric=BINARY_METRIC,
     interval_len=INTERVAL_LEN,
 )
 
@@ -64,6 +68,8 @@ for dl in range(1, DELETE_UP_TO + 1):
 print()
 print("Done.")
 
+# Output follows (captured with BINARY_METRIC = False, the continuous
+# alt - ref readout delta; the binary call-delta will differ).
 """
 Mean deltas across exons:
 variant                    P5'SS        3'SS        5'SS       N3'SS
