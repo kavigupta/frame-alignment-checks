@@ -29,6 +29,12 @@ DISTANCE_OUT = 40
 DELETE_UP_TO = 6
 INTERVAL_LEN = 131072
 OUTPUT_TYPES = [OutputType.SPLICE_SITES, OutputType.SPLICE_SITE_USAGE]
+# When True, threshold each site's ref/alt readout at its calibrated
+# donor/acceptor decision threshold and report the binary call-delta in
+# {-1, 0, +1}; the thresholds are calibrated once (and cached) via
+# alphagenome_calibration_thresholds. Set False for the raw continuous
+# alt - ref readout delta.
+BINARY_METRIC = True
 
 # ---------- setup ----------
 with open(os.path.expanduser("~/.alphagenome")) as f:
@@ -61,6 +67,7 @@ for output_type in OUTPUT_TYPES:
         output_type,
         distance_out=DISTANCE_OUT,
         delete_up_to=DELETE_UP_TO,
+        binary_metric=BINARY_METRIC,
         interval_len=INTERVAL_LEN,
     )
     print(f"Successfully processed {result.num_exons} exons\n")
