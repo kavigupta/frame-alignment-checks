@@ -7,13 +7,17 @@ a ``DeletionAccuracyDeltaResult``.
 from __future__ import annotations
 
 import os
-import time
 from typing import TYPE_CHECKING, List, Optional, Sequence
 
 import numpy as np
 import tqdm
 from permacache import permacache, stable_hash
 
+from ..alphagenome_api import (
+    find_strand_track,
+    predict_interval_with_retry,
+    predict_variants_with_retry,
+)
 from ..coding_exon import CodingExon
 from ..load_data import (
     load_long_canonical_internal_coding_exons,
@@ -39,7 +43,6 @@ _COMP = {"A": "T", "C": "G", "G": "C", "T": "A"}
 _NTS = np.array(list("ACGT"))
 
 # --- tuning constants ---
-PREDICT_MAX_ATTEMPTS = 5  # retries on transient grpc RpcErrors
 # check_splice_site_signals: a site passes as the max within ±WINDOW bp or by
 # scoring >= FLOOR absolutely.
 SPLICE_SITE_PEAK_WINDOW = 50
@@ -68,37 +71,6 @@ _CACHE_DIR_CALIB = os.path.join(
     "data",
     "alphagenome_calibration_cache",
 )
-
-
-def _with_rpc_retry(call, what):
-    """
-    ``call()`` with exponential backoff on ``grpc.RpcError``; re-raises after
-    ``PREDICT_MAX_ATTEMPTS``. ``what`` labels the retry log line.
-    """
-    import grpc
-
-    for attempt in range(1, PREDICT_MAX_ATTEMPTS + 1):
-        try:
-            return call()
-        except grpc.RpcError as e:
-            if attempt == PREDICT_MAX_ATTEMPTS:
-                raise
-            print(
-                f"  {what} RpcError (attempt {attempt}/{PREDICT_MAX_ATTEMPTS}): "
-                f"{e.code() if hasattr(e, 'code') else e}; retrying"
-            )
-            time.sleep(2 ** (attempt - 1))
-    raise AssertionError(f"{what} retry loop exited without returning")  # unreachable
-
-
-def _predict_variants_with_retry(model, **kwargs):
-    """``model.predict_variants`` with grpc retry (see :func:`_with_rpc_retry`)."""
-    return _with_rpc_retry(lambda: model.predict_variants(**kwargs), "predict_variants")
-
-
-def _predict_interval_with_retry(model, **kwargs):
-    """``model.predict_interval`` with grpc retry (see :func:`_with_rpc_retry`)."""
-    return _with_rpc_retry(lambda: model.predict_interval(**kwargs), "predict_interval")
 
 
 def _seq_pos_to_genomic_1based(gene_info, pos):
@@ -136,19 +108,6 @@ def _exon_centered_interval(gene_info, exon, interval_len):
         chromosome=gene_info["chrom"],
         start=mid_0based - interval_len // 2,
         end=mid_0based + interval_len // 2,
-    )
-
-
-def _find_strand_track(ss, st_type, strand):
-    """Index of the ``st_type`` ("donor"/"acceptor") track on ``strand`` in ``ss``."""
-    track_names = list(ss.metadata["name"])
-    track_strands = list(ss.metadata["strand"])
-    for t, (tn, ts) in enumerate(zip(track_names, track_strands)):
-        if ts == strand and st_type in tn.lower():
-            return t
-    raise ValueError(
-        f"No {st_type} track found for strand {strand}; "
-        f"tracks={list(zip(track_names, track_strands))}"
     )
 
 
@@ -309,7 +268,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
             )
         )
 
-    variant_outputs = _predict_variants_with_retry(
+    variant_outputs = predict_variants_with_retry(
         model,
         intervals=interval,
         variants=variants,
@@ -320,7 +279,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
 
     ref_ss_0 = variant_outputs[0].reference.get(output_type)
     site_track_idx = [
-        _find_strand_track(ref_ss_0, st_type, strand) for st_type in _SITE_TRACK_TYPES
+        find_strand_track(ref_ss_0, st_type, strand) for st_type in _SITE_TRACK_TYPES
     ]
 
     site_seq_positions = [
@@ -472,7 +431,7 @@ def alphagenome_calibration_thresholds(
         if interval.start < 0:
             continue
 
-        pred = _predict_interval_with_retry(
+        pred = predict_interval_with_retry(
             model,
             interval=interval,
             requested_outputs=[output_type],
@@ -481,7 +440,7 @@ def alphagenome_calibration_thresholds(
         ss = pred.get(output_type)
         track_start = ss.interval.start
         W = ss.values.shape[0]
-        ti = {t: _find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES}
+        ti = {t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES}
 
         # seq index -> 1-based genomic, vectorised
         positions = np.arange(gene_len)
