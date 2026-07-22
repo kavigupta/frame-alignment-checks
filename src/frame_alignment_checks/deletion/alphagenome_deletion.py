@@ -606,8 +606,8 @@ def run_alphagenome_deletion_experiment(
             ss_disagreements.append((i, ex.gene_idx, descs))
 
     # disagreements only fail the run if frequent enough to look systematic.
-    ss_rate = ss_disagreements and len(ss_disagreements) / max(n_placeable, 1)
-    ss_fatal = ss_disagreements and ss_rate >= MAX_SPLICE_SITE_FAILURE_RATE
+    ss_rate = len(ss_disagreements) / max(n_placeable, 1)
+    ss_fatal = bool(ss_disagreements) and ss_rate >= MAX_SPLICE_SITE_FAILURE_RATE
 
     if ss_disagreements:
         verdict = (
