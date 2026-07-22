@@ -333,7 +333,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
 
     # reported, not fatal: keep the deltas; the run-level rate bar decides.
     splice_site_failures = check_splice_site_signals(
-        variant_outputs[0].reference.get(output_type),
+        ref_ss_0,
         site_genomic,
         site_track_idx,
     )
