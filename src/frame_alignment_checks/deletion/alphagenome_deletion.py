@@ -56,14 +56,18 @@ SPLICE_SITE_PEAK_FLOOR = 0.5
 # systematic coordinate bug and failed (rather than scattered discrepancies).
 MAX_SPLICE_SITE_FAILURE_RATE = 0.05
 # Frameshift guard in ``deltas_for_exon`` (alt track left-shifted by del_len,
-# google-deepmind/alphagenome issue #23). A central peak only votes if it is
-# sharp at the del_len scale (ref >= SHARPNESS * neighbor) and largely survived
-# the deletion (max(shifted, unshifted) alt >= SURVIVAL * ref); the guard fails
-# only if at least MAX_FLIP_RATE of the voting peaks prefer the un-shifted
-# readout (which would mean a release fixed the frameshift).
+# google-deepmind/alphagenome issue #23). It scans every sharp reference peak
+# past the deletion on the donor/acceptor tracks; a peak votes only if it is tall
+# relative to its track (ref >= REL_FLOOR * track max), sharp at the del_len scale
+# (ref >= SHARPNESS * neighbor at ±del_len), and largely survived the deletion
+# (max(shifted, unshifted) alt >= SURVIVAL * ref). The guard fails when at least
+# MAX_FLIP_RATE of the voting peaks prefer the un-shifted readout (which would
+# mean a release fixed the frameshift). The scan yields hundreds of votes per
+# exon, so MAX_FLIP_RATE can be tight without tripping on the odd noisy peak.
+FRAMESHIFT_PEAK_REL_FLOOR = 0.5
 FRAMESHIFT_PEAK_SHARPNESS = 2
 FRAMESHIFT_PEAK_SURVIVAL = 0.5
-FRAMESHIFT_MAX_FLIP_RATE = 0.25
+FRAMESHIFT_MAX_FLIP_RATE = 0.05
 
 # Package-local cache directory (shipped with the package via package_data), so
 # precomputed AlphaGenome results travel with the install instead of living in
@@ -228,6 +232,53 @@ def check_splice_site_signals(ref_track, site_genomic, site_track_idx):
     return failures
 
 
+def _frameshift_votes(ref_col, alt_col, del_len, track_start, del_end_0based, ti):
+    """
+    Vote on whether one track's alternate readout is still left-shifted by
+    ``del_len`` relative to its reference (issue #23), across every sharp
+    reference peak lying past the deletion.
+
+    A local index ``i`` votes when its reference value is a tall, sharp,
+    surviving peak (see the ``FRAMESHIFT_*`` constants). Its vote *passes* when
+    the shifted lookup ``alt[i - del_len]`` matches the reference peak at least as
+    well as the un-shifted ``alt[i]``, and *flips* otherwise (evidence the
+    frameshift is gone). ``ti`` labels the track in the returned details.
+
+    :returns: ``(n_total, n_fail, flipped_details)``.
+    """
+    W = ref_col.shape[0]
+    i = np.arange(W)
+    room = (i >= del_len) & (i < W - del_len)
+    past_del = (track_start + i) >= del_end_0based
+    # clipped only so the gather is in-bounds; ``room`` masks the clipped entries.
+    im = np.clip(i - del_len, 0, W - 1)
+    ip = np.clip(i + del_len, 0, W - 1)
+    nb = np.maximum(ref_col[im], ref_col[ip])
+    shifted_alt = alt_col[im]
+    rmax = float(ref_col.max()) if W else 0.0
+    eligible = (
+        room
+        & past_del
+        & (ref_col > 0)
+        & (ref_col >= FRAMESHIFT_PEAK_REL_FLOOR * rmax)
+        & (ref_col >= FRAMESHIFT_PEAK_SHARPNESS * nb)
+        & (np.maximum(shifted_alt, alt_col) >= FRAMESHIFT_PEAK_SURVIVAL * ref_col)
+    )
+    idxs = np.nonzero(eligible)[0]
+    shifted_err = np.abs(shifted_alt[idxs] - ref_col[idxs])
+    unshifted_err = np.abs(alt_col[idxs] - ref_col[idxs])
+    flip = shifted_err > unshifted_err
+    details = [
+        f"track={ti} pos0={track_start + int(k)} del_len={del_len}: "
+        f"ref={ref_col[k]:.4f} shifted_alt={shifted_alt[k]:.4f} "
+        f"unshifted_alt={alt_col[k]:.4f} "
+        f"(shifted_err={shifted_err[j]:.4f} vs unshifted_err={unshifted_err[j]:.4f})"
+        for j, k in enumerate(idxs)
+        if flip[j]
+    ]
+    return int(idxs.size), int(flip.sum()), details
+
+
 @permacache(
     _CACHE_DIR_REFALT,
     key_function=dict(
@@ -364,25 +415,26 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
         site_track_idx,
     )
 
-    # raw_per_variant[variant_index, site] then reshape to (deletion, location, site)
-    # `predict_variants` returns alt tracks that span the same array shape as
-    # ref but are indexed by **local position in the right-padded alt sequence**
-    # (the server pulls del_len extra reference bases from beyond the interval
-    # so the alt sequence is still W bp). Local index i in alt therefore maps
-    # to genomic position start+i before the deletion and start+i+del_len after
-    # it -- so for sites past the deletion we look up alt at idx - del_len.
-    # (See google-deepmind/alphagenome issue #23.)
+    # `predict_variants` returns alt tracks indexed by **local position in the
+    # right-padded alt sequence** (the server pulls del_len extra reference bases
+    # from beyond the interval so the alt sequence is still W bp). Local index i
+    # in alt maps to genomic position start+i before the deletion and
+    # start+i+del_len after it -- so for sites past the deletion we look up alt at
+    # idx - del_len. (See google-deepmind/alphagenome issue #23.)
     ref_raw = np.zeros((len(variants), 4))
     alt_raw = np.zeros((len(variants), 4))
-    # Evidence that AlphaGenome's alt track is still left-shifted by del_len for
-    # deletions -- the un-fixed behavior the idx-del_len readout corrects for
-    # (issue #23, confirmed open by a maintainer). For each sharp, surviving
-    # central splice peak read on the shifted branch, the shifted lookup
-    # (idx-del_len) must match the reference peak better than the un-shifted
-    # lookup (idx). If a future release fixes the frameshift this flips, and we
-    # fail loudly here rather than silently double-correcting.
-    frameshift_checks = []
-    frameshift_diag = []  # one (passed, detail-string) per voting peak
+    # Frameshift guard: per variant, over every sharp reference peak past the
+    # deletion on the donor and acceptor tracks (not just this exon's two central
+    # sites), check the shifted lookup wins. This yields hundreds of votes per
+    # exon, so the per-exon flip-rate bar below is well-powered; if a release
+    # fixes the frameshift the shifted lookup stops winning and we fail loudly
+    # rather than silently double-correcting. The check is co-located with the
+    # (possibly-broken) API call, so it only needs to hold for freshly-fetched
+    # predictions -- cached exons were validated when they were computed.
+    frameshift_tracks = [site_track_idx[0], site_track_idx[1]]  # donor, acceptor
+    n_fs_total = 0
+    n_fs_fail = 0
+    fs_flipped = []
     for vi, (vo, v) in enumerate(zip(variant_outputs, variants)):
         ref_ss = vo.reference.get(output_type)
         alt_ss = vo.alternate.get(output_type)
@@ -402,56 +454,32 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
                 ref_raw[vi, si] = np.nan
                 alt_raw[vi, si] = np.nan
                 continue
-            rv = float(ref_ss.values[idx, ti])
-            av = float(alt_ss.values[alt_idx, ti])
-            ref_raw[vi, si] = rv
-            alt_raw[vi, si] = av
+            ref_raw[vi, si] = float(ref_ss.values[idx, ti])
+            alt_raw[vi, si] = float(alt_ss.values[alt_idx, ti])
 
-            # Frameshift guard. Only the central acceptor/donor (si 1, 2) are
-            # validated sharp peaks. Require a peak that is sharp at the del_len
-            # scale in the reference (rv >= SHARPNESS*neighbor) and that largely
-            # survived the deletion, so the shifted-vs-unshifted comparison is
-            # well-defined; otherwise this (vi, si) just doesn't vote.
-            if shifted and si in (1, 2) and rv > 0 and idx + del_len < W:
-                nb = max(
-                    float(ref_ss.values[idx - del_len, ti]),
-                    float(ref_ss.values[idx + del_len, ti]),
-                )
-                unshifted = float(alt_ss.values[idx, ti])
-                if (
-                    rv >= FRAMESHIFT_PEAK_SHARPNESS * nb
-                    and max(av, unshifted) >= FRAMESHIFT_PEAK_SURVIVAL * rv
-                ):
-                    shifted_err = abs(av - rv)
-                    unshifted_err = abs(unshifted - rv)
-                    passed = shifted_err <= unshifted_err
-                    frameshift_checks.append(passed)
-                    frameshift_diag.append(
-                        (
-                            passed,
-                            f"del_len={del_len} loc={mutation_locations[vi % 4]!r} "
-                            f"site={affected_splice_sites[si]!r}: "
-                            f"ref={rv:.4f} shifted_alt={av:.4f} unshifted_alt={unshifted:.4f} "
-                            f"-> shifted_err={shifted_err:.4f} vs unshifted_err={unshifted_err:.4f} "
-                            f"(margin={unshifted_err - shifted_err:+.4f})",
-                        )
-                    )
+        for ti in frameshift_tracks:
+            nt, nf, flipped = _frameshift_votes(
+                ref_ss.values[:, ti].astype(np.float64),
+                alt_ss.values[:, ti].astype(np.float64),
+                del_len,
+                track_start,
+                del_end_0based,
+                ti,
+            )
+            n_fs_total += nt
+            n_fs_fail += nf
+            fs_flipped += flipped
 
     # No qualifying peak is vacuously fine (others vote). A real upstream fix
-    # flips essentially every qualifying peak, so only error when a substantial
-    # fraction (>= FRAMESHIFT_MAX_FLIP_RATE) flip; isolated flips on weak peaks
-    # are noise.
-    flipped = "".join(f"\n    - {d}" for ok, d in frameshift_diag if not ok)
-    n_fail = frameshift_checks.count(False)
-    n_total = len(frameshift_checks)
-    assert n_total == 0 or n_fail < FRAMESHIFT_MAX_FLIP_RATE * n_total, (
+    # flips essentially every peak, so only error when at least MAX_FLIP_RATE do.
+    assert n_fs_total == 0 or n_fs_fail < FRAMESHIFT_MAX_FLIP_RATE * n_fs_total, (
         "AlphaGenome alt track no longer appears left-shifted by del_len: the "
         "shifted readout failed to match the reference splice peak better than "
-        f"the un-shifted readout in {n_fail}/{n_total} checks "
+        f"the un-shifted readout in {n_fs_fail}/{n_fs_total} sharp peaks "
         f"(>= {FRAMESHIFT_MAX_FLIP_RATE:.0%}). If a release fixed the deletion "
         "frameshift (google-deepmind/alphagenome issue #23), drop the "
-        "idx-del_len correction in deltas_for_exon. "
-        f"Flipped peak(s):{flipped}"
+        "idx-del_len correction in deltas_for_exon. Flipped peak(s):"
+        + "".join(f"\n    - {d}" for d in fs_flipped[:10])
     )
 
     # (delete_up_to, len(mutation_locations), len(affected_splice_sites))
