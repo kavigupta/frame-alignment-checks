@@ -142,6 +142,26 @@ def _seq_slice_to_ref_bases(gene_info, seq_idx, start, end):
     return "".join(_COMP[b] for b in reversed(bases))
 
 
+def _exon_centered_interval(gene_info, exon, interval_len):
+    """
+    The length-``interval_len`` ``genome.Interval`` centred on ``exon``'s
+    midpoint. Both :func:`deltas_for_exon` and
+    :func:`alphagenome_calibration_thresholds` build their window here so a site
+    is always read under the identical framing -- the calibrated thresholds
+    apply to readouts taken in the same window they were calibrated in.
+    """
+    from alphagenome.data import genome
+
+    mid_0based = (
+        _seq_pos_to_genomic_1based(gene_info, (exon.acceptor + exon.donor) // 2) - 1
+    )
+    return genome.Interval(
+        chromosome=gene_info["chrom"],
+        start=mid_0based - interval_len // 2,
+        end=mid_0based + interval_len // 2,
+    )
+
+
 def _find_strand_track(ss, st_type, strand):
     """
     Index of the ``st_type`` ("donor"/"acceptor") track on ``strand`` within an
@@ -290,12 +310,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     def seq_pos_to_genomic_1based(pos):
         return _seq_pos_to_genomic_1based(gene_info, pos)
 
-    exon_mid_0based = seq_pos_to_genomic_1based((exon.acceptor + exon.donor) // 2) - 1
-    interval = genome.Interval(
-        chromosome=gene_info["chrom"],
-        start=exon_mid_0based - interval_len // 2,
-        end=exon_mid_0based + interval_len // 2,
-    )
+    interval = _exon_centered_interval(gene_info, exon, interval_len)
     assert interval.start >= 0, (
         f"interval start {interval.start} < 0 for exon {exon}: the "
         f"{interval_len} nt window runs off the start of {gene_info['chrom']}"
@@ -479,25 +494,27 @@ def alphagenome_calibration_thresholds(
     readout -- the AlphaGenome analogue of
     :func:`fac.models.calibration_accuracy_and_thresholds`.
 
-    Mirrors the CNN calibration: over every validation gene that has a canonical
-    internal coding exon (and transcript coords), it gathers the model's
-    predicted donor/acceptor value at every annotated position and picks, per
-    track type, the threshold ``quantile(values, 1 - base_rate)`` so the model
-    calls the correct *number* of donor/acceptor sites. The reference
-    (un-variant) prediction is read from a single :meth:`predict_interval` call
-    per gene.
+    Mirrors the CNN calibration: over every canonical internal coding exon
+    (whose gene has transcript coords), it gathers the model's predicted
+    donor/acceptor value at every annotated position in that exon's window and
+    picks, per track type, the threshold ``quantile(values, 1 - base_rate)`` so
+    the model calls the correct *number* of donor/acceptor sites. The reference
+    (un-variant) prediction is read from one :meth:`predict_interval` call per
+    exon.
 
-    Each gene is scored in **one fixed ``interval_len`` window centred on the
-    gene** -- the same window length the deletion experiment uses -- so every
-    position is read under the same generous, uniform context the experiment
-    reads its splice sites in. This deliberately avoids sizing the window to the
-    gene: a window only marginally larger than the gene would push its splice
-    sites to the window edges, where AlphaGenome's predictions are least
-    reliable, biasing the calibrated distribution. Genes longer than
-    ``interval_len`` (a small minority) contribute only their central
-    ``interval_len`` of positions; the dropped tails are exactly the positions
-    that would otherwise sit near a window edge, so the distributional threshold
-    is unaffected.
+    Each exon is scored in the **same ``interval_len`` window the deletion
+    experiment reads it in** -- centred on the exon midpoint via
+    :func:`_exon_centered_interval` -- so every readout is calibrated under the
+    identical framing the threshold is later applied in. Centring on the gene
+    instead (as an earlier version did) reads many sites at a different
+    within-window offset than the experiment does, and AlphaGenome's output is
+    position-in-window sensitive, so the thresholds would not match the readouts
+    they gate. Annotated positions of the exon's gene that fall outside the
+    window are dropped -- they sit beyond where the experiment reads that exon
+    anyway. Windows of different exons of the same gene overlap, so a shared
+    flanking position is read once per covering exon; this is the intended
+    weighting, since the experiment likewise reads each exon under its own
+    window.
 
     Thresholds are output-type-specific (``SPLICE_SITES`` and
     ``SPLICE_SITE_USAGE`` live on different scales), ontology-specific, and
@@ -512,8 +529,6 @@ def alphagenome_calibration_thresholds(
         and the resulting recall ``"recall_donor"`` / ``"recall_acceptor"`` (the
         fraction of true sites called at threshold) for reference.
     """
-    from alphagenome.data import genome
-
     assert model._model_version is not None, (  # pylint: disable=protected-access
         "model was created without an explicit model_version; pass "
         "model_version=... to dna_client.create() so cached thresholds don't "
@@ -521,8 +536,9 @@ def alphagenome_calibration_thresholds(
     )
 
     tc = load_transcript_coords()
-    gene_idxs = sorted({ex.gene_idx for ex in load_long_canonical_internal_coding_exons()})
-    gene_idxs = [g for g in gene_idxs if g in tc][:limit]
+    exons = [
+        ex for ex in load_long_canonical_internal_coding_exons() if ex.gene_idx in tc
+    ][:limit]
 
     # values[type] collects predicted readouts at every labelled position;
     # truth[type] the matching 0/1 label. "donor" <-> label channel 2 (y[:, 2]),
@@ -531,17 +547,20 @@ def alphagenome_calibration_thresholds(
     values = {t: [] for t in _CALIB_TRACK_TYPES}
     truth = {t: [] for t in _CALIB_TRACK_TYPES}
 
-    iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
-    for gene_idx in iterator:
-        gene_info = tc[gene_idx]
-        _, y = load_validation_gene(gene_idx)
+    y_by_gene = {}
+    iterator = tqdm.tqdm(exons, desc="calibration exons") if progress else exons
+    for ex in iterator:
+        gene_info = tc[ex.gene_idx]
+        if ex.gene_idx not in y_by_gene:
+            y_by_gene[ex.gene_idx] = load_validation_gene(ex.gene_idx)[1]
+        y = y_by_gene[ex.gene_idx]
         gene_len = y.shape[0]
 
-        mid_genomic_0based = (gene_info["hg38_start"] + gene_info["hg38_end"]) // 2
-        start = max(0, mid_genomic_0based - interval_len // 2)
-        interval = genome.Interval(
-            chromosome=gene_info["chrom"], start=start, end=start + interval_len
-        )
+        interval = _exon_centered_interval(gene_info, ex, interval_len)
+        # An exon whose window runs off the chromosome start can't be placed; the
+        # deletion experiment hard-fails on it, so just skip it here.
+        if interval.start < 0:
+            continue
 
         pred = _predict_interval_with_retry(
             model,
