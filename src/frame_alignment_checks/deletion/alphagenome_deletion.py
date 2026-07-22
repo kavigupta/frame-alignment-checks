@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import TYPE_CHECKING, List, Sequence
+from typing import TYPE_CHECKING, List, Optional, Sequence
 
 import numpy as np
 import tqdm
@@ -423,7 +423,7 @@ def alphagenome_calibration_thresholds(
     *,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
-    limit: int = None,
+    limit: Optional[int] = None,
     progress: bool = True,
 ) -> dict:
     """
@@ -518,7 +518,7 @@ def run_alphagenome_deletion_experiment(
     distance_out: int,
     delete_up_to: int,
     binary_metric: bool = True,
-    thresholds: dict = None,
+    thresholds: Optional[dict] = None,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
     progress: bool = True,
@@ -658,8 +658,8 @@ def alphagenome_deletion_experiment(
     distance_out: int,
     delete_up_to: int,
     binary_metric: bool = True,
-    thresholds: dict = None,
-    limit: int = None,
+    thresholds: Optional[dict] = None,
+    limit: Optional[int] = None,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
     progress: bool = True,
