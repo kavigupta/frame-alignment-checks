@@ -11,7 +11,7 @@ keeps the type-only imports lazy), so this module imports fine without it.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Sequence, Tuple
+from typing import TYPE_CHECKING, Optional, Sequence, Tuple
 
 import numpy as np
 import tqdm
@@ -43,6 +43,33 @@ _CACHE_DIR_CALIB = os.path.join(
 )
 
 
+def _seq_pos_to_genomic_1based(gene_info, pos):
+    """
+    Map seq coord ``pos`` (0-based, 5'->3') to 1-based hg38. The gene spans
+    ``[hg38_start, hg38_end]``, so seq 0 is leftmost on ``+``, rightmost on ``-``.
+    """
+    if gene_info["strand"] == "+":
+        return gene_info["hg38_start"] + pos
+    return gene_info["hg38_end"] - pos
+
+
+def _exon_centered_interval(gene_info, exon, interval_len):
+    """
+    Length-``interval_len`` interval centred on ``exon``'s midpoint. Shared by the
+    deletion experiment and calibration so both read a site in the same window.
+    """
+    from alphagenome.data import genome
+
+    mid_0based = (
+        _seq_pos_to_genomic_1based(gene_info, (exon.acceptor + exon.donor) // 2) - 1
+    )
+    return genome.Interval(
+        chromosome=gene_info["chrom"],
+        start=mid_0based - interval_len // 2,
+        end=mid_0based + interval_len // 2,
+    )
+
+
 @permacache(
     _CACHE_DIR_CALIB,
     key_function=dict(
@@ -66,54 +93,30 @@ def alphagenome_calibration_thresholds(
     *,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
-    limit: int = None,
+    limit: Optional[int] = None,
     progress: bool = True,
 ) -> dict:
     """
-    Calibrate per-track-type decision thresholds for AlphaGenome's splice-site
-    readout -- the AlphaGenome analogue of
-    :func:`fac.models.calibration_accuracy_and_thresholds`.
+    Calibrate per-track decision thresholds for AlphaGenome's splice readout (the
+    analogue of :func:`fac.models.calibration_accuracy_and_thresholds`).
 
-    Mirrors the CNN calibration: over every validation gene that has a canonical
-    internal coding exon (and transcript coords), it gathers the model's
-    predicted donor/acceptor value at every annotated position and picks, per
-    track type, the threshold ``quantile(values, 1 - base_rate)`` so the model
-    calls the correct *number* of donor/acceptor sites. The reference
-    (un-variant) prediction is read from a single :meth:`predict_interval` call
-    per gene.
+    Over every canonical internal coding exon, reads the model's donor/acceptor
+    values at each annotated position in that exon's window (one predict_interval
+    per exon) and picks ``quantile(values, 1 - base_rate)`` per track type. Uses
+    the same ``_exon_centered_interval`` window as the deletion experiment, so
+    thresholds match the readouts they gate; positions outside the window are
+    dropped.
 
-    Each gene is scored in **one fixed ``interval_len`` window centred on the
-    gene**. This deliberately avoids sizing the window to the gene: a window only
-    marginally larger than the gene would push its splice sites to the window
-    edges, where AlphaGenome's predictions are least reliable, biasing the
-    calibrated distribution. Genes longer than ``interval_len`` (a small
-    minority) contribute only their central ``interval_len`` of positions; the
-    dropped tails are exactly the positions that would otherwise sit near a
-    window edge, so the distributional threshold is unaffected.
+    Keyed on model fold, ``output_type``, ``ontology_terms`` and ``interval_len``,
+    which must match wherever the thresholds are applied.
 
-    Thresholds are output-type-specific, ontology-specific, and window-specific,
-    so the cache is keyed on ``output_type``, ``ontology_terms`` and
-    ``interval_len`` alongside the model fold. The same ``ontology_terms`` and
-    ``interval_len`` must be used here and wherever the thresholds are applied,
-    for them to match the values they're thresholding.
-
-    :param model: AlphaGenome client. Must be created with an explicit
-        ``model_version`` so cached thresholds don't collide across folds.
-    :param output_type: ``OutputType.SPLICE_SITES`` -- the per-base donor/
-        acceptor probability tracks. ``SPLICE_SITE_USAGE`` is not supported: its
-        tracks are per-assay, not split into donor/acceptor, so there is no
-        donor/acceptor track to threshold (calibration would raise looking for
-        one).
-    :param interval_len: AlphaGenome input window length (a supported size).
-    :param ontology_terms: ontology terms requested from the model.
-    :param limit: if given, calibrate on only the first ``limit`` genes.
-    :returns: a JSON-serializable dict with float ``"donor"`` / ``"acceptor"``
-        thresholds, the observed base rates ``"frac_donor"`` / ``"frac_acceptor"``,
-        and the resulting recall ``"recall_donor"`` / ``"recall_acceptor"`` (the
-        fraction of true sites called at threshold) for reference.
+    :param model: AlphaGenome client (needs an explicit ``model_version`` so
+        cached thresholds don't collide across folds).
+    :param output_type: ``SPLICE_SITES`` or ``SPLICE_SITE_USAGE``.
+    :param limit: if given, calibrate on only the first ``limit`` exons.
+    :returns: dict with float ``"donor"``/``"acceptor"`` thresholds, base rates
+        ``"frac_*"`` and recalls ``"recall_*"``.
     """
-    from alphagenome.data import genome
-
     assert model._model_version is not None, (  # pylint: disable=protected-access
         "model was created without an explicit model_version; pass "
         "model_version=... to dna_client.create() so cached thresholds don't "
@@ -121,35 +124,28 @@ def alphagenome_calibration_thresholds(
     )
 
     tc = load_transcript_coords()
-    gene_idxs = sorted(
-        {ex.gene_idx for ex in load_long_canonical_internal_coding_exons()}
-    )
-    gene_idxs = [g for g in gene_idxs if g in tc][:limit]
+    exons = [
+        ex for ex in load_long_canonical_internal_coding_exons() if ex.gene_idx in tc
+    ][:limit]
 
-    # values[type] collects predicted readouts at every labelled position;
-    # truth[type] the matching 0/1 label. "donor" <-> label channel 2 (y[:, 2]),
-    # "acceptor" <-> channel 1, matching load_validation_gene's (null, acc, don).
+    # "donor" <-> y channel 2, "acceptor" <-> channel 1 (null, acc, don).
     label_channel = {"acceptor": 1, "donor": 2}
     values = {t: [] for t in _CALIB_TRACK_TYPES}
     truth = {t: [] for t in _CALIB_TRACK_TYPES}
 
-    iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
-    for gene_idx in iterator:
-        gene_info = tc[gene_idx]
-        # pylint (astroid numpy brain) mis-infers y as np.array itself, so it
-        # flags .shape (no-member) and y[...] (unsubscriptable-object) below; y
-        # is the actual label ndarray from load_validation_gene.
-        _, y = load_validation_gene(gene_idx)
-        gene_len = y.shape[0]  # pylint: disable=no-member
+    y_by_gene = {}
+    iterator = tqdm.tqdm(exons, desc="calibration exons") if progress else exons
+    for ex in iterator:
+        gene_info = tc[ex.gene_idx]
+        if ex.gene_idx not in y_by_gene:
+            y_by_gene[ex.gene_idx] = load_validation_gene(ex.gene_idx)[1]
+        y = y_by_gene[ex.gene_idx]
+        gene_len = y.shape[0]
 
-        # 1-based genomic midpoint of the gene, matching the seq->genomic
-        # mapping below (hg38_start/hg38_end are the gene's first/last base). Only
-        # used to centre the window, so a 1-base offset is immaterial here.
-        mid_genomic_1based = (gene_info["hg38_start"] + gene_info["hg38_end"]) // 2
-        start = max(0, mid_genomic_1based - interval_len // 2)
-        interval = genome.Interval(
-            chromosome=gene_info["chrom"], start=start, end=start + interval_len
-        )
+        interval = _exon_centered_interval(gene_info, ex, interval_len)
+        # window off the chromosome start: unplaceable, skip (experiment fails on it).
+        if interval.start < 0:
+            continue
 
         pred = predict_interval_with_retry(
             model,
@@ -160,14 +156,9 @@ def alphagenome_calibration_thresholds(
         ss = pred.get(output_type)
         track_start = ss.interval.start
         W = ss.values.shape[0]
-        ti = {
-            t: find_strand_track(ss, t, gene_info["strand"])
-            for t in _CALIB_TRACK_TYPES
-        }
+        ti = {t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES}
 
-        # genomic 1-based position of each seq index, vectorised. The gene
-        # sequence spans exactly [hg38_start, hg38_end], so seq position 0 is the
-        # genomically-leftmost base on + strand and the rightmost on -.
+        # seq index -> 1-based genomic, vectorised
         positions = np.arange(gene_len)
         if gene_info["strand"] == "+":
             genomic_1based = gene_info["hg38_start"] + positions
@@ -178,8 +169,6 @@ def alphagenome_calibration_thresholds(
         idx_ib = idx[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
-            # y is mis-inferred as np.array (see note above); allow the subscript.
-            # pylint: disable=unsubscriptable-object
             truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
 
     result = {}

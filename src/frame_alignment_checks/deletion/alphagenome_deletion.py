@@ -13,10 +13,11 @@ import numpy as np
 import tqdm
 from permacache import permacache, stable_hash
 
-from ..alphagenome_api import (
-    find_strand_track,
-    predict_interval_with_retry,
-    predict_variants_with_retry,
+from ..alphagenome_api import find_strand_track, predict_variants_with_retry
+from ..alphagenome_calibration import (
+    _exon_centered_interval,
+    _seq_pos_to_genomic_1based,
+    alphagenome_calibration_thresholds,
 )
 from ..coding_exon import CodingExon
 from ..load_data import (
@@ -66,21 +67,6 @@ _CACHE_DIR_REFALT = os.path.join(
     "data",
     "alphagenome_cache_refalt",
 )
-_CACHE_DIR_CALIB = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-    "alphagenome_calibration_cache",
-)
-
-
-def _seq_pos_to_genomic_1based(gene_info, pos):
-    """
-    Map seq coord ``pos`` (0-based, 5'->3') to 1-based hg38. The gene spans
-    ``[hg38_start, hg38_end]``, so seq 0 is leftmost on ``+``, rightmost on ``-``.
-    """
-    if gene_info["strand"] == "+":
-        return gene_info["hg38_start"] + pos
-    return gene_info["hg38_end"] - pos
 
 
 def _seq_slice_to_ref_bases(gene_info, seq_idx, start, end):
@@ -92,23 +78,6 @@ def _seq_slice_to_ref_bases(gene_info, seq_idx, start, end):
     if gene_info["strand"] == "+":
         return bases
     return "".join(_COMP[b] for b in reversed(bases))
-
-
-def _exon_centered_interval(gene_info, exon, interval_len):
-    """
-    Length-``interval_len`` interval centred on ``exon``'s midpoint. Shared by
-    deltas_for_exon and calibration so both read a site in the same window.
-    """
-    from alphagenome.data import genome
-
-    mid_0based = (
-        _seq_pos_to_genomic_1based(gene_info, (exon.acceptor + exon.donor) // 2) - 1
-    )
-    return genome.Interval(
-        chromosome=gene_info["chrom"],
-        start=mid_0based - interval_len // 2,
-        end=mid_0based + interval_len // 2,
-    )
 
 
 def check_splice_site_signals(ref_track, site_genomic, site_track_idx):
@@ -360,113 +329,6 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
         "alt": alt_raw.reshape(shape).tolist(),
         "splice_site_failures": splice_site_failures,
     }
-
-
-# donor/acceptor track types the binary metric thresholds, per _SITE_TRACK_TYPES.
-_CALIB_TRACK_TYPES = ("donor", "acceptor")
-
-
-@permacache(
-    _CACHE_DIR_CALIB,
-    key_function=dict(
-        model=lambda m: m._model_version,  # pylint: disable=protected-access
-        output_type=str,
-        ontology_terms=list,
-    ),
-    shelf_type="individual-file",
-    driver="json",
-)
-def alphagenome_calibration_thresholds(
-    model: dna_client.DnaClient,
-    output_type: OutputType,
-    *,
-    interval_len: int = 131072,
-    ontology_terms: Sequence[str] = ("UBERON:0001157",),
-    limit: Optional[int] = None,
-    progress: bool = True,
-) -> dict:
-    """
-    Calibrate per-track decision thresholds for AlphaGenome's splice readout (the
-    analogue of ``fac.models.calibration_accuracy_and_thresholds``).
-
-    Over every canonical internal coding exon, reads the model's donor/acceptor
-    values at each annotated position in that exon's window (one predict_interval
-    per exon) and picks ``quantile(values, 1 - base_rate)`` per track type. Uses
-    the same ``_exon_centered_interval`` window as the experiment, so thresholds
-    match the readouts they gate; positions outside the window are dropped.
-
-    Keyed on model fold, ``output_type``, ``ontology_terms`` and ``interval_len``,
-    which must match the experiment's.
-
-    :returns: dict with float ``"donor"``/``"acceptor"`` thresholds, base rates
-        ``"frac_*"`` and recalls ``"recall_*"``.
-    """
-    assert model._model_version is not None, (  # pylint: disable=protected-access
-        "model was created without an explicit model_version; pass "
-        "model_version=... to dna_client.create() so cached thresholds don't "
-        "collide across folds"
-    )
-
-    tc = load_transcript_coords()
-    exons = [
-        ex for ex in load_long_canonical_internal_coding_exons() if ex.gene_idx in tc
-    ][:limit]
-
-    # "donor" <-> y channel 2, "acceptor" <-> channel 1 (null, acc, don).
-    label_channel = {"acceptor": 1, "donor": 2}
-    values = {t: [] for t in _CALIB_TRACK_TYPES}
-    truth = {t: [] for t in _CALIB_TRACK_TYPES}
-
-    y_by_gene = {}
-    iterator = tqdm.tqdm(exons, desc="calibration exons") if progress else exons
-    for ex in iterator:
-        gene_info = tc[ex.gene_idx]
-        if ex.gene_idx not in y_by_gene:
-            y_by_gene[ex.gene_idx] = load_validation_gene(ex.gene_idx)[1]
-        y = y_by_gene[ex.gene_idx]
-        gene_len = y.shape[0]
-
-        interval = _exon_centered_interval(gene_info, ex, interval_len)
-        # window off the chromosome start: unplaceable, skip (experiment fails on it).
-        if interval.start < 0:
-            continue
-
-        pred = predict_interval_with_retry(
-            model,
-            interval=interval,
-            requested_outputs=[output_type],
-            ontology_terms=list(ontology_terms),
-        )
-        ss = pred.get(output_type)
-        track_start = ss.interval.start
-        W = ss.values.shape[0]
-        ti = {t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES}
-
-        # seq index -> 1-based genomic, vectorised
-        positions = np.arange(gene_len)
-        if gene_info["strand"] == "+":
-            genomic_1based = gene_info["hg38_start"] + positions
-        else:
-            genomic_1based = gene_info["hg38_end"] - positions
-        idx = genomic_1based - 1 - track_start
-        in_bounds = (idx >= 0) & (idx < W)
-        idx_ib = idx[in_bounds]
-        for t in _CALIB_TRACK_TYPES:
-            values[t].append(ss.values[idx_ib, ti[t]])
-            truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
-
-    result = {}
-    for t in _CALIB_TRACK_TYPES:
-        vals = np.concatenate(values[t])
-        tru = np.concatenate(truth[t])
-        frac = float(tru.mean())
-        thr = float(np.quantile(vals, 1 - frac))
-        called = (vals > thr) & (tru > 0.5)
-        recall = float(called.sum() / max((tru > 0.5).sum(), 1))
-        result[t] = thr
-        result[f"frac_{t}"] = frac
-        result[f"recall_{t}"] = recall
-    return result
 
 
 def run_alphagenome_deletion_experiment(
