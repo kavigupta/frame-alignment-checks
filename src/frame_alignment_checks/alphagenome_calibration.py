@@ -161,8 +161,7 @@ def alphagenome_calibration_thresholds(
         track_start = ss.interval.start
         W = ss.values.shape[0]
         ti = {
-            t: find_strand_track(ss, t, gene_info["strand"])
-            for t in _CALIB_TRACK_TYPES
+            t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES
         }
 
         # genomic 1-based position of each seq index, vectorised. The gene
