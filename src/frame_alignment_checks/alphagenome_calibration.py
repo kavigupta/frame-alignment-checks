@@ -11,13 +11,13 @@ keeps the type-only imports lazy), so this module imports fine without it.
 from __future__ import annotations
 
 import os
-import time
 from typing import TYPE_CHECKING, Sequence, Tuple
 
 import numpy as np
 import tqdm
 from permacache import permacache
 
+from .alphagenome_api import find_strand_track, predict_interval_with_retry
 from .load_data import (
     load_long_canonical_internal_coding_exons,
     load_transcript_coords,
@@ -27,9 +27,6 @@ from .load_data import (
 if TYPE_CHECKING:
     from alphagenome.models import dna_client
     from alphagenome.models.dna_output import OutputType
-
-# Attempts before giving up on transient grpc RpcErrors in predict_interval.
-PREDICT_MAX_ATTEMPTS = 5
 
 # Splice-site track types calibrated, aligned with load_validation_gene's label
 # channels: "acceptor" <-> y[:, 1], "donor" <-> y[:, 2].
@@ -44,50 +41,6 @@ _CACHE_DIR_CALIB = os.path.join(
     "data",
     "alphagenome_calibration_cache",
 )
-
-
-def _with_rpc_retry(call, what):
-    """
-    Call ``call()`` with exponential backoff on ``grpc.RpcError``. Re-raises
-    after ``PREDICT_MAX_ATTEMPTS`` failures. ``what`` is used only in the
-    retry log line.
-    """
-    import grpc
-
-    for attempt in range(1, PREDICT_MAX_ATTEMPTS + 1):
-        try:
-            return call()
-        except grpc.RpcError as e:
-            if attempt == PREDICT_MAX_ATTEMPTS:
-                raise
-            print(
-                f"  {what} RpcError (attempt {attempt}/{PREDICT_MAX_ATTEMPTS}): "
-                f"{e.code() if hasattr(e, 'code') else e}; retrying"
-            )
-            time.sleep(2 ** (attempt - 1))
-    # Unreachable: the final attempt above either returns or re-raises.
-    raise AssertionError(f"{what} retry loop exited without returning")
-
-
-def _predict_interval_with_retry(model, **kwargs):
-    """``model.predict_interval(**kwargs)`` with grpc retry (see :func:`_with_rpc_retry`)."""
-    return _with_rpc_retry(lambda: model.predict_interval(**kwargs), "predict_interval")
-
-
-def _find_strand_track(ss, st_type, strand):
-    """
-    Index of the ``st_type`` ("donor"/"acceptor") track on ``strand`` within an
-    AlphaGenome splice-site output ``ss``. Raises if none is found.
-    """
-    track_names = list(ss.metadata["name"])
-    track_strands = list(ss.metadata["strand"])
-    for t, (tn, ts) in enumerate(zip(track_names, track_strands)):
-        if ts == strand and st_type in tn.lower():
-            return t
-    raise ValueError(
-        f"No {st_type} track found for strand {strand}; "
-        f"tracks={list(zip(track_names, track_strands))}"
-    )
 
 
 @permacache(
@@ -198,7 +151,7 @@ def alphagenome_calibration_thresholds(
             chromosome=gene_info["chrom"], start=start, end=start + interval_len
         )
 
-        pred = _predict_interval_with_retry(
+        pred = predict_interval_with_retry(
             model,
             interval=interval,
             requested_outputs=[output_type],
@@ -208,8 +161,7 @@ def alphagenome_calibration_thresholds(
         track_start = ss.interval.start
         W = ss.values.shape[0]
         ti = {
-            t: _find_strand_track(ss, t, gene_info["strand"])
-            for t in _CALIB_TRACK_TYPES
+            t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES
         }
 
         # genomic 1-based position of each seq index, vectorised. The gene
