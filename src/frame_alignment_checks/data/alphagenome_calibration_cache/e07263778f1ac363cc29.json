@@ -1,1 +1,0 @@
-{"{\"interval_len\": 131072, \"limit\": null, \"model\": \"ALL_FOLDS\", \"ontology_terms\": [\"UBERON:0001157\"], \"output_type\": \"OutputType.SPLICE_SITES\", \"progress\": null}": {"donor": 0.83984375, "frac_donor": 0.00023917374761640988, "recall_donor": 0.9532276768457673, "acceptor": 0.82421875, "frac_acceptor": 0.00023935865194390612, "recall_acceptor": 0.9573194283507146}}
