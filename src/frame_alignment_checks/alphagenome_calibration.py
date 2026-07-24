@@ -3,15 +3,14 @@ Calibrate per-track-type decision thresholds for AlphaGenome's splice-site
 predictions -- the AlphaGenome analogue of
 ``fac.models.calibration_accuracy_and_thresholds``.
 
-AlphaGenome requires Python >=3.10 and is an optional extra; the runtime imports
-live inside the function that uses it (and ``from __future__ import annotations``
-keeps the type-only imports lazy), so this module imports fine without it.
+alphagenome is an optional extra, so its imports are deferred and this module
+loads without it.
 """
 
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Sequence, Tuple
+from typing import TYPE_CHECKING, Optional, Sequence, Tuple
 
 import numpy as np
 import tqdm
@@ -28,14 +27,10 @@ if TYPE_CHECKING:
     from alphagenome.models import dna_client
     from alphagenome.models.dna_output import OutputType
 
-# Splice-site track types calibrated, aligned with load_validation_gene's label
-# channels: "acceptor" <-> y[:, 1], "donor" <-> y[:, 2].
 _CALIB_TRACK_TYPES = ("donor", "acceptor")
 
-# Package-local cache directory (shipped with the package via package_data), so
-# precomputed thresholds travel with the install instead of living in the user's
-# global permacache. Resolved from __file__ so it works wherever installed; an
-# absolute path overrides permacache's default base.
+# shipped with the package, so thresholds travel with the install rather than
+# living in the user's global permacache
 _CACHE_DIR_CALIB = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "data",
@@ -46,15 +41,11 @@ _CACHE_DIR_CALIB = os.path.join(
 @permacache(
     _CACHE_DIR_CALIB,
     key_function=dict(
-        # the served model identity (e.g. "ALL_FOLDS"/"FOLD_0"); the client must
-        # have been created with an explicit model_version so the cache key
-        # distinguishes folds rather than collapsing them onto a shared None.
+        # keyed on the fold so folds don't collapse onto a shared None
         model=lambda m: m._model_version,  # pylint: disable=protected-access
         output_type=str,
         ontology_terms=list,
-        # progress only controls the tqdm bar, not the result, so keep it out of
-        # the cache key (collapse to None) to avoid fragmenting the cache across
-        # progress=True/False calls.
+        # affects only the tqdm bar, so keep it out of the key
         progress=lambda _: None,
     ),
     shelf_type="individual-file",
@@ -66,7 +57,7 @@ def alphagenome_calibration_thresholds(
     *,
     interval_len: int = 131072,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
-    limit: int = None,
+    limit: Optional[int] = None,
     progress: bool = True,
 ) -> dict:
     """
@@ -136,9 +127,7 @@ def alphagenome_calibration_thresholds(
     iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
     for gene_idx in iterator:
         gene_info = tc[gene_idx]
-        # pylint (astroid numpy brain) mis-infers y as np.array itself, so it
-        # flags .shape (no-member) and y[...] (unsubscriptable-object) below; y
-        # is the actual label ndarray from load_validation_gene.
+        # astroid mis-infers y as np.array itself, so .shape and y[...] get flagged
         _, y = load_validation_gene(gene_idx)
         gene_len = y.shape[0]  # pylint: disable=no-member
 
@@ -177,7 +166,6 @@ def alphagenome_calibration_thresholds(
         idx_ib = idx[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
-            # y is mis-inferred as np.array (see note above); allow the subscript.
             # pylint: disable=unsubscriptable-object
             truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
 
@@ -195,9 +183,8 @@ def alphagenome_calibration_thresholds(
     return result
 
 
-# Channel order shared with the CNN framework: y's label channels are
-# (null, acceptor, donor), so the per-non-null-channel arrays returned below --
-# and ModelToAnalyze.thresholds -- run [acceptor, donor].
+# y's label channels are (null, acceptor, donor), matching
+# ModelToAnalyze.thresholds; the dict's own order is donor-first.
 _THRESHOLD_ORDER = ("acceptor", "donor")
 
 
@@ -212,26 +199,23 @@ def alphagenome_calibration_accuracy_and_thresholds(
     ``(acc, thresholds)`` shape so AlphaGenome calibration drops into the same
     downstream machinery as the CNN models.
 
-    This is the intended public entry point: it wraps the lower-level, cached
-    :func:`alphagenome_calibration_thresholds` (which returns a richer JSON dict
-    keyed by track-type name, plus base rates) and reshapes it into two length-2
-    arrays ordered ``[acceptor, donor]`` -- matching ``y``'s non-null label
-    channels and :attr:`fac.models.ModelToAnalyze.thresholds` (one threshold per
-    non-null channel, acceptor then donor). Build the array via this explicit
-    order rather than the dict's insertion order, which is donor-first.
+    This is the intended public entry point: it wraps the cached
+    :func:`alphagenome_calibration_thresholds` and reshapes its dict into two
+    length-2 arrays ordered ``[acceptor, donor]``.
 
     :param model: AlphaGenome client (see
         :func:`alphagenome_calibration_thresholds`).
-    :param output_type: ``OutputType.SPLICE_SITES`` or
-        ``OutputType.SPLICE_SITE_USAGE``.
+    :param output_type: ``OutputType.SPLICE_SITES``; see
+        :func:`alphagenome_calibration_thresholds` for why
+        ``SPLICE_SITE_USAGE`` is not supported.
     :param kwargs: forwarded verbatim to
         :func:`alphagenome_calibration_thresholds` (``interval_len``,
         ``ontology_terms``, ``limit``, ``progress``).
     :returns: ``(acc, thresholds)``, each an ``np.ndarray`` of shape ``(2,)`` in
         ``[acceptor, donor]`` order. ``acc`` is the per-channel recall at the
-        chosen threshold; ``thresholds`` are the per-channel decision thresholds
-        in the raw ``output_type`` value scale (not softmax probabilities, unlike
-        the CNN thresholds), so they apply only to that same ``output_type``.
+        chosen threshold; ``thresholds`` are in the raw ``output_type`` value
+        scale (not softmax probabilities, unlike the CNN thresholds), so they
+        apply only to that same ``output_type``.
     """
     raw = alphagenome_calibration_thresholds(model, output_type, **kwargs)
     acc = np.array([raw[f"recall_{t}"] for t in _THRESHOLD_ORDER])
