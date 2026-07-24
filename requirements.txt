@@ -11,6 +11,9 @@ pylint==3.3.4
 ## we test that the code is correctly formatted
 black==25.1.0
 isort==6.0.0
+## capped below 3.11, whose text rendering changed and broke the pixel-exact
+## plotting tests; an exact pin can't span the 3.9-3.12 CI matrix
+matplotlib<3.11
 
 # Docs
 
