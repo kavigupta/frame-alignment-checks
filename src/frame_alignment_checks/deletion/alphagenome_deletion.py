@@ -187,7 +187,8 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     :param gene_info: ``load_transcript_coords()`` entry for ``exon.gene_idx``.
     :param seq_idx: integer base indices for the gene, shape ``(L,)``.
     :param model: AlphaGenome client.
-    :param output_type: ``SPLICE_SITES`` or ``SPLICE_SITE_USAGE``.
+    :param output_type: ``SPLICE_SITES``; see
+        :func:`run_alphagenome_deletion_experiment`.
     :returns: JSON-serializable dict (cached one file per exon):
         - ``"ref"``/``"alt"``: ``(delete_up_to, 4, 4)`` nested lists indexed by
           ``[deletion-1, mutation_location, affected_splice_site]``, the readouts
@@ -355,6 +356,10 @@ def run_alphagenome_deletion_experiment(
     ``binary_metric=False`` reports continuous ``alt - ref``. ``thresholds``
     overrides the calibration (computed once when None).
 
+    ``output_type`` must be ``SPLICE_SITES``: the readout and the calibration
+    both index a donor/acceptor-typed track, which ``SPLICE_SITE_USAGE`` (tracks
+    per assay) does not have.
+
     Exons with no transcript coords yield an all-NaN block (skipped by the
     NaN-aware aggregation). Splice-site disagreements keep their deltas and only
     fail the run if their rate reaches ``MAX_SPLICE_SITE_FAILURE_RATE``; any
@@ -488,10 +493,11 @@ def alphagenome_deletion_experiment(
     """
     Full experiment: load all canonical internal coding exons and run every
     ``1..delete_up_to`` nt deletion through the model (the analogue of
-    ``fac.deletion.experiment``). ``exp1``/``exp2`` are capped smoke-test drivers.
+    ``fac.deletion.experiment``). ``exp1`` is a capped smoke-test driver.
 
     :param model: AlphaGenome client (needs an explicit ``model_version``).
-    :param output_type: ``SPLICE_SITES`` or ``SPLICE_SITE_USAGE``.
+    :param output_type: ``SPLICE_SITES``; see
+        :func:`run_alphagenome_deletion_experiment`.
     :param distance_out: nt from each splice site to place deletions.
     :param delete_up_to: longest deletion length (runs ``1..delete_up_to``).
     :param binary_metric: threshold to a binary call-delta (default) or return

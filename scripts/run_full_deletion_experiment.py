@@ -1,15 +1,14 @@
 """
 Full AlphaGenome deletion experiment: run all 1-6nt deletions around the splice
-sites of every canonical internal coding exon, for both splice-site output
-types, and print the mean delta table for each.
+sites of every canonical internal coding exon and print the mean delta table.
 
-Unlike the exp1/exp2 smoke tests, this loads the whole canonical exon set (via
+Unlike the exp1 smoke test, this loads the whole canonical exon set (via
 ``fac.deletion.alphagenome_deletion_experiment``) rather than a small slice.
 
 Reports the calibrated binary call-delta (the default ``binary_metric=True``,
-the analogue of the CNN ``fac.deletion.experiment``). The first run per output
-type calibrates donor/acceptor thresholds over the validation genes (cached
-thereafter); pass ``binary_metric=False`` for the raw continuous readout delta.
+the analogue of the CNN ``fac.deletion.experiment``). The first run calibrates
+donor/acceptor thresholds over the validation genes (cached thereafter); pass
+``binary_metric=False`` for the raw continuous readout delta.
 """
 
 import os
@@ -28,7 +27,9 @@ from frame_alignment_checks.deletion import (
 DISTANCE_OUT = 40
 DELETE_UP_TO = 6
 INTERVAL_LEN = 131072
-OUTPUT_TYPES = [OutputType.SPLICE_SITES, OutputType.SPLICE_SITE_USAGE]
+# SPLICE_SITE_USAGE has no donor/acceptor-typed track, so neither the readout
+# nor the calibration applies to it.
+OUTPUT_TYPE = OutputType.SPLICE_SITES
 # When True, threshold each site's ref/alt readout at its calibrated
 # donor/acceptor decision threshold and report the binary call-delta in
 # {-1, 0, +1}; the thresholds are calibrated once (and cached) via
@@ -60,18 +61,16 @@ def print_mean_deltas(result):
             print(row)
 
 
-for output_type in OUTPUT_TYPES:
-    print(f"\n===== {output_type} =====")
-    result = alphagenome_deletion_experiment(
-        model,
-        output_type,
-        distance_out=DISTANCE_OUT,
-        delete_up_to=DELETE_UP_TO,
-        binary_metric=BINARY_METRIC,
-        interval_len=INTERVAL_LEN,
-    )
-    print(f"Successfully processed {result.num_exons} exons\n")
-    print_mean_deltas(result)
+result = alphagenome_deletion_experiment(
+    model,
+    OUTPUT_TYPE,
+    distance_out=DISTANCE_OUT,
+    delete_up_to=DELETE_UP_TO,
+    binary_metric=BINARY_METRIC,
+    interval_len=INTERVAL_LEN,
+)
+print(f"Successfully processed {result.num_exons} exons\n")
+print_mean_deltas(result)
 
 print()
 print("Done.")
