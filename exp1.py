@@ -18,8 +18,7 @@ from frame_alignment_checks.load_data import load_long_canonical_internal_coding
 
 # ---------- config ----------
 DISTANCE_OUT = 40
-DELETE_UP_TO = 6
-N_EXONS = 200
+DELETE_UP_TO = 9
 INTERVAL_LEN = 131072
 OUTPUT_TYPE = OutputType.SPLICE_SITES
 # When True, threshold each site's ref/alt readout at its calibrated
@@ -35,7 +34,7 @@ with open(os.path.expanduser("~/.alphagenome")) as f:
 
 model = dna_client.create(API_KEY, model_version=dna_client.ModelVersion.ALL_FOLDS)
 
-exons = load_long_canonical_internal_coding_exons()[:N_EXONS]
+exons = load_long_canonical_internal_coding_exons()
 
 result = run_alphagenome_deletion_experiment(
     exons,
