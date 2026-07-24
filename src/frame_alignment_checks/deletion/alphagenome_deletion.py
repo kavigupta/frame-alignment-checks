@@ -80,6 +80,42 @@ def _seq_slice_to_ref_bases(gene_info, seq_idx, start, end):
     return "".join(_COMP[b] for b in reversed(bases))
 
 
+# --- preconditions ---
+
+
+def _assert_explicit_model_version(model):
+    """The cache is keyed on the fold, so a ``None`` version would collide them."""
+    assert model._model_version is not None, (  # pylint: disable=protected-access
+        "model was created without an explicit model_version; pass "
+        "model_version=... to dna_client.create() so cached results don't "
+        "collide across folds"
+    )
+
+
+def _assert_deletion_fits_exon(exon, *, distance_out, delete_up_to):
+    """Deletions must stay clear of the exon center (parity with the CNN path)."""
+    assert (distance_out + delete_up_to) * 2 < exon.donor - exon.acceptor, (
+        f"This deletion experiment (distance_out={distance_out}, "
+        f"delete_up_to={delete_up_to}) is too large for the exon {exon}"
+    )
+
+
+def _assert_interval_on_chromosome(interval, exon, gene_info, interval_len):
+    assert interval.start >= 0, (
+        f"interval start {interval.start} < 0 for exon {exon}: the "
+        f"{interval_len} nt window runs off the start of {gene_info['chrom']}"
+    )
+
+
+def _assert_ref_alt_tracks_aligned(ref_ss, alt_ss):
+    """Both readouts are indexed by the same local position, so they must agree."""
+    assert alt_ss.values.shape == ref_ss.values.shape
+    assert alt_ss.interval.start == ref_ss.interval.start
+
+
+# --- signal checks ---
+
+
 def check_splice_site_signals(ref_track, site_genomic, site_track_idx):
     """
     Check each known splice site lands on AlphaGenome's predicted peak on its
@@ -112,7 +148,7 @@ def check_splice_site_signals(ref_track, site_genomic, site_track_idx):
     return failures
 
 
-def _frameshift_votes(ref_col, alt_col, del_len, track_start, del_end_0based, ti):
+def _frameshift_votes(ref_col, alt_col, del_len, *, track_start, del_end_0based, ti):
     """
     Vote, over every sharp reference peak past the deletion, on whether ``alt`` is
     still left-shifted by ``del_len`` (issue #23). A peak passes when the shifted
@@ -152,6 +188,45 @@ def _frameshift_votes(ref_col, alt_col, del_len, track_start, del_end_0based, ti
     return int(idxs.size), int(flip.sum()), details
 
 
+def _assert_alt_tracks_left_shifted(variant_outputs, variants, output_type, track_idxs):
+    """
+    Fail if AlphaGenome's alt tracks are no longer left-shifted by ``del_len``, the
+    behaviour the readout's ``idx - del_len`` correction compensates for. Every
+    sharp reference peak past each deletion votes (not just the four annotated
+    sites), so the bar below sees hundreds of votes per exon.
+    """
+    n_total = 0
+    n_fail = 0
+    flipped = []
+    for vo, v in zip(variant_outputs, variants):
+        ref_ss = vo.reference.get(output_type)
+        alt_ss = vo.alternate.get(output_type)
+        del_len = len(v.reference_bases)
+        for ti in track_idxs:
+            nt, nf, details = _frameshift_votes(
+                ref_ss.values[:, ti].astype(np.float64),
+                alt_ss.values[:, ti].astype(np.float64),
+                del_len,
+                track_start=ref_ss.interval.start,
+                del_end_0based=v.position - 1 + del_len,
+                ti=ti,
+            )
+            n_total += nt
+            n_fail += nf
+            flipped += details
+
+    # fail only if >= MAX_FLIP_RATE of the peaks flip (a real fix flips ~all).
+    assert n_total == 0 or n_fail < FRAMESHIFT_MAX_FLIP_RATE * n_total, (
+        "AlphaGenome alt track no longer appears left-shifted by del_len: the "
+        "shifted readout failed to match the reference splice peak better than "
+        f"the un-shifted readout in {n_fail}/{n_total} sharp peaks "
+        f"(>= {FRAMESHIFT_MAX_FLIP_RATE:.0%}). If a release fixed the deletion "
+        "frameshift (google-deepmind/alphagenome issue #23), drop the "
+        "idx-del_len correction in deltas_for_exon. Flipped peak(s):"
+        + "".join(f"\n    - {d}" for d in flipped[:10])
+    )
+
+
 @permacache(
     _CACHE_DIR_REFALT,
     key_function=dict(
@@ -167,7 +242,7 @@ def _frameshift_votes(ref_col, alt_col, del_len, track_start, del_end_0based, ti
     shelf_type="individual-file",
     driver="json",
 )
-def deltas_for_exon(  # pylint: disable=too-many-statements
+def deltas_for_exon(
     exon: CodingExon,
     gene_info: dict,
     seq_idx: np.ndarray,
@@ -198,15 +273,9 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
     """
     from alphagenome.data import genome
 
-    assert model._model_version is not None, (  # pylint: disable=protected-access
-        "model was created without an explicit model_version; pass "
-        "model_version=... to dna_client.create() so cached results don't "
-        "collide across folds"
-    )
-    # deletions must stay clear of the exon center (parity with the CNN path).
-    assert (distance_out + delete_up_to) * 2 < exon.donor - exon.acceptor, (
-        f"This deletion experiment (distance_out={distance_out}, "
-        f"delete_up_to={delete_up_to}) is too large for the exon {exon}"
+    _assert_explicit_model_version(model)
+    _assert_deletion_fits_exon(
+        exon, distance_out=distance_out, delete_up_to=delete_up_to
     )
     strand = gene_info["strand"]
 
@@ -217,10 +286,7 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
         return _seq_pos_to_genomic_1based(gene_info, pos)
 
     interval = _exon_centered_interval(gene_info, exon, interval_len)
-    assert interval.start >= 0, (
-        f"interval start {interval.start} < 0 for exon {exon}: the "
-        f"{interval_len} nt window runs off the start of {gene_info['chrom']}"
-    )
+    _assert_interval_on_chromosome(interval, exon, gene_info, interval_len)
 
     variants = []
     for seq_start, seq_end in deletion_ranges_for_exon(
@@ -267,24 +333,24 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
         site_track_idx,
     )
 
+    _assert_alt_tracks_left_shifted(
+        variant_outputs,
+        variants,
+        output_type,
+        site_track_idx[:2],  # donor, acceptor
+    )
+
     # predict_variants indexes alt tracks by local position in the right-padded
     # alt sequence, so a site past the deletion reads alt at idx - del_len
     # (alphagenome issue #23).
     ref_raw = np.zeros((len(variants), 4))
     alt_raw = np.zeros((len(variants), 4))
-    # Frameshift guard (see constants): vote on every sharp peak past the deletion,
-    # not just the central sites, so the per-exon bar below has hundreds of votes.
-    frameshift_tracks = [site_track_idx[0], site_track_idx[1]]  # donor, acceptor
-    n_fs_total = 0
-    n_fs_fail = 0
-    fs_flipped = []
     for vi, (vo, v) in enumerate(zip(variant_outputs, variants)):
         ref_ss = vo.reference.get(output_type)
         alt_ss = vo.alternate.get(output_type)
+        _assert_ref_alt_tracks_aligned(ref_ss, alt_ss)
         track_start = ref_ss.interval.start
         W = ref_ss.values.shape[0]
-        assert alt_ss.values.shape == ref_ss.values.shape
-        assert alt_ss.interval.start == track_start
 
         del_len = len(v.reference_bases)
         del_end_0based = v.position - 1 + del_len
@@ -300,36 +366,65 @@ def deltas_for_exon(  # pylint: disable=too-many-statements
             ref_raw[vi, si] = float(ref_ss.values[idx, ti])
             alt_raw[vi, si] = float(alt_ss.values[alt_idx, ti])
 
-        for ti in frameshift_tracks:
-            nt, nf, flipped = _frameshift_votes(
-                ref_ss.values[:, ti].astype(np.float64),
-                alt_ss.values[:, ti].astype(np.float64),
-                del_len,
-                track_start,
-                del_end_0based,
-                ti,
-            )
-            n_fs_total += nt
-            n_fs_fail += nf
-            fs_flipped += flipped
-
-    # fail only if >= MAX_FLIP_RATE of the peaks flip (a real fix flips ~all).
-    assert n_fs_total == 0 or n_fs_fail < FRAMESHIFT_MAX_FLIP_RATE * n_fs_total, (
-        "AlphaGenome alt track no longer appears left-shifted by del_len: the "
-        "shifted readout failed to match the reference splice peak better than "
-        f"the un-shifted readout in {n_fs_fail}/{n_fs_total} sharp peaks "
-        f"(>= {FRAMESHIFT_MAX_FLIP_RATE:.0%}). If a release fixed the deletion "
-        "frameshift (google-deepmind/alphagenome issue #23), drop the "
-        "idx-del_len correction in deltas_for_exon. Flipped peak(s):"
-        + "".join(f"\n    - {d}" for d in fs_flipped[:10])
-    )
-
     shape = (delete_up_to, len(mutation_locations), len(affected_splice_sites))
     return {
         "ref": ref_raw.reshape(shape).tolist(),
         "alt": alt_raw.reshape(shape).tolist(),
         "splice_site_failures": splice_site_failures,
     }
+
+
+# --- run-level checks ---
+
+
+def _report_splice_site_disagreements(ss_disagreements, n_placeable):
+    """
+    Print the consolidated disagreement listing and decide whether the rate is
+    high enough to look like a systematic coordinate bug rather than noise.
+    Returns ``(rate, fatal)``.
+    """
+    rate = len(ss_disagreements) / max(n_placeable, 1)
+    fatal = bool(ss_disagreements) and rate >= MAX_SPLICE_SITE_FAILURE_RATE
+    if ss_disagreements:
+        verdict = (
+            "EXCEEDED, failing run" if fatal else "within bar, kept (deltas retained)"
+        )
+        # consolidated list (inline prints get buried in the progress bar).
+        listing = "\n".join(
+            f"  exon {i} (gene_idx={gene_idx}): {descs}"
+            for i, gene_idx, descs in ss_disagreements
+        )
+        print(
+            f"  splice-site sanity: {len(ss_disagreements)}/{n_placeable} placeable "
+            f"exon(s) disagreed (rate {rate:.3%}, bar "
+            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}) -- {verdict}:\n{listing}"
+        )
+    return rate, fatal
+
+
+def _raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal):
+    """Raise every per-exon failure together, chained to the first one."""
+    if not (failures or ss_fatal):
+        return
+    parts = [
+        f"  exon {i} (gene_idx={gene_idx}): {type(e).__name__}: {e}"
+        for i, gene_idx, e in failures
+    ]
+    if ss_fatal:
+        parts += [
+            f"  exon {i} (gene_idx={gene_idx}): splice-site disagreement: {descs}"
+            for i, gene_idx, descs in ss_disagreements
+        ]
+    reason = f"{len(failures)} hard failure(s)" + (
+        f" and splice-site disagreement rate {ss_rate:.3%} >= "
+        f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}"
+        if ss_fatal
+        else ""
+    )
+    cause = failures[0][2] if failures else None
+    raise RuntimeError(
+        f"AlphaGenome deletion experiment failed ({reason}):\n" + "\n".join(parts)
+    ) from cause
 
 
 def run_alphagenome_deletion_experiment(
@@ -431,47 +526,8 @@ def run_alphagenome_deletion_experiment(
             )
             ss_disagreements.append((i, ex.gene_idx, descs))
 
-    # disagreements only fail the run if frequent enough to look systematic.
-    ss_rate = len(ss_disagreements) / max(n_placeable, 1)
-    ss_fatal = bool(ss_disagreements) and ss_rate >= MAX_SPLICE_SITE_FAILURE_RATE
-
-    if ss_disagreements:
-        verdict = (
-            "EXCEEDED, failing run"
-            if ss_fatal
-            else "within bar, kept (deltas retained)"
-        )
-        # consolidated list (inline prints get buried in the progress bar).
-        listing = "\n".join(
-            f"  exon {i} (gene_idx={gene_idx}): {descs}"
-            for i, gene_idx, descs in ss_disagreements
-        )
-        print(
-            f"  splice-site sanity: {len(ss_disagreements)}/{n_placeable} placeable "
-            f"exon(s) disagreed (rate {ss_rate:.3%}, bar "
-            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}) -- {verdict}:\n{listing}"
-        )
-
-    if failures or ss_fatal:
-        parts = [
-            f"  exon {i} (gene_idx={gene_idx}): {type(e).__name__}: {e}"
-            for i, gene_idx, e in failures
-        ]
-        if ss_fatal:
-            parts += [
-                f"  exon {i} (gene_idx={gene_idx}): splice-site disagreement: {descs}"
-                for i, gene_idx, descs in ss_disagreements
-            ]
-        reason = f"{len(failures)} hard failure(s)" + (
-            f" and splice-site disagreement rate {ss_rate:.3%} >= "
-            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}"
-            if ss_fatal
-            else ""
-        )
-        cause = failures[0][2] if failures else None
-        raise RuntimeError(
-            f"AlphaGenome deletion experiment failed ({reason}):\n" + "\n".join(parts)
-        ) from cause
+    ss_rate, ss_fatal = _report_splice_site_disagreements(ss_disagreements, n_placeable)
+    _raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal)
 
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
