@@ -53,16 +53,16 @@ def _seq_pos_to_genomic_1based(gene_info, pos):
     return gene_info["hg38_end"] - pos
 
 
+def _exon_mid_seq(exon):
+    """Seq coord of ``exon``'s midpoint; the point every exon window centres on."""
+    return (exon.acceptor + exon.donor) // 2
+
+
 def _exon_centered_interval(gene_info, exon, interval_len):
-    """
-    Length-``interval_len`` interval centred on ``exon``'s midpoint. Shared by the
-    deletion experiment and calibration so both read a site in the same window.
-    """
+    """Length-``interval_len`` interval centred on ``exon``'s midpoint."""
     from alphagenome.data import genome
 
-    mid_0based = (
-        _seq_pos_to_genomic_1based(gene_info, (exon.acceptor + exon.donor) // 2) - 1
-    )
+    mid_0based = _seq_pos_to_genomic_1based(gene_info, _exon_mid_seq(exon)) - 1
     return genome.Interval(
         chromosome=gene_info["chrom"],
         start=mid_0based - interval_len // 2,
@@ -92,6 +92,7 @@ def alphagenome_calibration_thresholds(
     output_type: OutputType,
     *,
     interval_len: int = 131072,
+    harvest_radius: int = 4096,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
     limit: Optional[int] = None,
     progress: bool = True,
@@ -100,19 +101,27 @@ def alphagenome_calibration_thresholds(
     Calibrate per-track decision thresholds for AlphaGenome's splice readout (the
     analogue of :func:`fac.models.calibration_accuracy_and_thresholds`).
 
-    Over every canonical internal coding exon, reads the model's donor/acceptor
-    values at each annotated position in that exon's window (one predict_interval
-    per exon) and picks ``quantile(values, 1 - base_rate)`` per track type. Uses
-    the same ``_exon_centered_interval`` window as the deletion experiment, so
-    thresholds match the readouts they gate; positions outside the window are
-    dropped.
+    Over every canonical internal coding exon, runs one ``predict_interval`` on an
+    ``interval_len`` window centred on that exon and picks
+    ``quantile(values, 1 - base_rate)`` per track type.
 
-    Keyed on model fold, ``output_type``, ``ontology_terms`` and ``interval_len``,
-    which must match wherever the thresholds are applied.
+    Only positions within ``harvest_radius`` of the window centre are read out.
+    AlphaGenome's per-base output depends on where in the window the base sits, so
+    a threshold is only valid for the offsets it was calibrated at; harvesting the
+    whole gene from each window would pool readouts taken tens of kb off-centre
+    and apply the result to sites read at the centre.
+
+    Keyed on model fold, ``output_type``, ``ontology_terms``, ``interval_len`` and
+    ``harvest_radius``, which must match wherever the thresholds are applied.
 
     :param model: AlphaGenome client (needs an explicit ``model_version`` so
         cached thresholds don't collide across folds).
     :param output_type: ``SPLICE_SITES`` or ``SPLICE_SITE_USAGE``.
+    :param interval_len: AlphaGenome input window length (a supported size).
+    :param harvest_radius: how far either side of the window centre to read
+        positions from. Trades offset fidelity against sample size: smaller keeps
+        every readout near the centre, larger pools more sites per window.
+    :param ontology_terms: ontology terms requested from the model.
     :param limit: if given, calibrate on only the first ``limit`` exons.
     :returns: dict with float ``"donor"``/``"acceptor"`` thresholds, base rates
         ``"frac_*"`` and recalls ``"recall_*"``.
@@ -160,18 +169,20 @@ def alphagenome_calibration_thresholds(
             t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES
         }
 
-        # seq index -> 1-based genomic, vectorised
+        # positions near the centred exon only -- same midpoint the window used,
+        # so these are the offsets the threshold gets applied at
         positions = np.arange(gene_len)
-        if gene_info["strand"] == "+":
-            genomic_1based = gene_info["hg38_start"] + positions
-        else:
-            genomic_1based = gene_info["hg38_end"] - positions
+        positions = positions[np.abs(positions - _exon_mid_seq(ex)) <= harvest_radius]
+
+        # seq index -> 1-based genomic, vectorised
+        genomic_1based = _seq_pos_to_genomic_1based(gene_info, positions)
         idx = genomic_1based - 1 - track_start
         in_bounds = (idx >= 0) & (idx < W)
         idx_ib = idx[in_bounds]
+        seq_ib = positions[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
-            truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
+            truth[t].append((y[seq_ib, label_channel[t]] > 0.5).astype(np.float64))
 
     result = {}
     for t in _CALIB_TRACK_TYPES:
