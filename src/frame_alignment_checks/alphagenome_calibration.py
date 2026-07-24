@@ -127,8 +127,9 @@ def alphagenome_calibration_thresholds(
     iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
     for gene_idx in iterator:
         gene_info = tc[gene_idx]
+        # astroid mis-infers y as np.array itself, so .shape and y[...] get flagged
         _, y = load_validation_gene(gene_idx)
-        gene_len = y.shape[0]
+        gene_len = y.shape[0]  # pylint: disable=no-member
 
         # 1-based genomic midpoint of the gene, matching the seq->genomic
         # mapping below (hg38_start/hg38_end are the gene's first/last base). Only
@@ -165,6 +166,7 @@ def alphagenome_calibration_thresholds(
         idx_ib = idx[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
+            # pylint: disable=unsubscriptable-object
             truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
 
     result = {}
