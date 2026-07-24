@@ -38,6 +38,30 @@ _CACHE_DIR_CALIB = os.path.join(
 )
 
 
+def _seq_pos_to_genomic_1based(gene_info, pos):
+    """Map seq coord ``pos`` (0-based, 5'->3') to 1-based hg38."""
+    if gene_info["strand"] == "+":
+        return gene_info["hg38_start"] + pos
+    return gene_info["hg38_end"] - pos
+
+
+def _exon_mid_seq(exon):
+    """Seq coord every window centred on ``exon`` is placed on."""
+    return (exon.acceptor + exon.donor) // 2
+
+
+def _exon_centered_interval(gene_info, exon, interval_len):
+    """Length-``interval_len`` interval centred on ``exon``'s midpoint."""
+    from alphagenome.data import genome
+
+    mid_0based = _seq_pos_to_genomic_1based(gene_info, _exon_mid_seq(exon)) - 1
+    return genome.Interval(
+        chromosome=gene_info["chrom"],
+        start=mid_0based - interval_len // 2,
+        end=mid_0based + interval_len // 2,
+    )
+
+
 @permacache(
     _CACHE_DIR_CALIB,
     key_function=dict(
@@ -56,89 +80,80 @@ def alphagenome_calibration_thresholds(
     output_type: OutputType,
     *,
     interval_len: int = 131072,
+    harvest_radius: int = 4096,
     ontology_terms: Sequence[str] = ("UBERON:0001157",),
     limit: Optional[int] = None,
     progress: bool = True,
 ) -> dict:
     """
-    Calibrate per-track-type decision thresholds for AlphaGenome's splice-site
-    readout -- the AlphaGenome analogue of
-    :func:`fac.models.calibration_accuracy_and_thresholds`.
+    Calibrate per-track decision thresholds for AlphaGenome's splice readout (the
+    analogue of :func:`fac.models.calibration_accuracy_and_thresholds`).
 
-    Mirrors the CNN calibration: over every validation gene that has a canonical
-    internal coding exon (and transcript coords), it gathers the model's
-    predicted donor/acceptor value at every annotated position and picks, per
-    track type, the threshold ``quantile(values, 1 - base_rate)`` so the model
-    calls the correct *number* of donor/acceptor sites. The reference
-    (un-variant) prediction is read from a single :meth:`predict_interval` call
-    per gene.
+    Over every canonical internal coding exon, runs one ``predict_interval`` on an
+    ``interval_len`` window centred on that exon and picks
+    ``quantile(values, 1 - base_rate)`` per track type.
 
-    Each gene is scored in **one fixed ``interval_len`` window centred on the
-    gene**. This deliberately avoids sizing the window to the gene: a window only
-    marginally larger than the gene would push its splice sites to the window
-    edges, where AlphaGenome's predictions are least reliable, biasing the
-    calibrated distribution. Genes longer than ``interval_len`` (a small
-    minority) contribute only their central ``interval_len`` of positions; the
-    dropped tails are exactly the positions that would otherwise sit near a
-    window edge, so the distributional threshold is unaffected.
+    Only positions within ``harvest_radius`` of the window centre are read out.
+    AlphaGenome's per-base output depends on where in the window the base sits, so
+    a threshold is only valid at the offsets it was calibrated at.
 
-    Thresholds are output-type-specific, ontology-specific, and window-specific,
-    so the cache is keyed on ``output_type``, ``ontology_terms`` and
-    ``interval_len`` alongside the model fold. The same ``ontology_terms`` and
-    ``interval_len`` must be used here and wherever the thresholds are applied,
-    for them to match the values they're thresholding.
+    Keyed on model fold, ``output_type``, ``ontology_terms``, ``interval_len`` and
+    ``harvest_radius``, which must match wherever the thresholds are applied.
 
-    :param model: AlphaGenome client. Must be created with an explicit
-        ``model_version`` so cached thresholds don't collide across folds.
-    :param output_type: ``OutputType.SPLICE_SITES`` -- the per-base donor/
-        acceptor probability tracks. ``SPLICE_SITE_USAGE`` is not supported: its
-        tracks are per-assay, not split into donor/acceptor, so there is no
-        donor/acceptor track to threshold (calibration would raise looking for
-        one).
+    :param model: AlphaGenome client (needs an explicit ``model_version`` so
+        cached thresholds don't collide across folds).
+    :param output_type: ``SPLICE_SITES``. ``SPLICE_SITE_USAGE`` is not supported:
+        its tracks are per-assay, so there is no donor/acceptor track to threshold
+        and track lookup raises.
     :param interval_len: AlphaGenome input window length (a supported size).
+    :param harvest_radius: how far either side of the window centre to read
+        positions from. Trades offset fidelity against sample size. Must be at
+        least half the longest exon and at most ``interval_len // 2``; both are
+        asserted.
     :param ontology_terms: ontology terms requested from the model.
-    :param limit: if given, calibrate on only the first ``limit`` genes.
-    :returns: a JSON-serializable dict with float ``"donor"`` / ``"acceptor"``
-        thresholds, the observed base rates ``"frac_donor"`` / ``"frac_acceptor"``,
-        and the resulting recall ``"recall_donor"`` / ``"recall_acceptor"`` (the
-        fraction of true sites called at threshold) for reference.
+    :param limit: if given, calibrate on only the first ``limit`` exons.
+    :returns: dict with float ``"donor"``/``"acceptor"`` thresholds, base rates
+        ``"frac_*"`` and recalls ``"recall_*"``.
     """
-    from alphagenome.data import genome
-
     assert model._model_version is not None, (  # pylint: disable=protected-access
         "model was created without an explicit model_version; pass "
         "model_version=... to dna_client.create() so cached thresholds don't "
         "collide across folds"
     )
+    assert harvest_radius <= interval_len // 2, (
+        f"harvest_radius={harvest_radius} exceeds half of interval_len="
+        f"{interval_len}; positions past the window edge would be dropped"
+    )
 
     tc = load_transcript_coords()
-    gene_idxs = sorted(
-        {ex.gene_idx for ex in load_long_canonical_internal_coding_exons()}
-    )
-    gene_idxs = [g for g in gene_idxs if g in tc][:limit]
+    exons = [
+        ex for ex in load_long_canonical_internal_coding_exons() if ex.gene_idx in tc
+    ][:limit]
 
-    # values[type] collects predicted readouts at every labelled position;
-    # truth[type] the matching 0/1 label. "donor" <-> label channel 2 (y[:, 2]),
-    # "acceptor" <-> channel 1, matching load_validation_gene's (null, acc, don).
+    # "donor" <-> y channel 2, "acceptor" <-> channel 1 (null, acc, don).
     label_channel = {"acceptor": 1, "donor": 2}
     values = {t: [] for t in _CALIB_TRACK_TYPES}
     truth = {t: [] for t in _CALIB_TRACK_TYPES}
 
-    iterator = tqdm.tqdm(gene_idxs, desc="calibration genes") if progress else gene_idxs
-    for gene_idx in iterator:
-        gene_info = tc[gene_idx]
-        # astroid mis-infers y as np.array itself, so .shape and y[...] get flagged
-        _, y = load_validation_gene(gene_idx)
-        gene_len = y.shape[0]  # pylint: disable=no-member
+    y_by_gene = {}
+    iterator = tqdm.tqdm(exons, desc="calibration exons") if progress else exons
+    for ex in iterator:
+        gene_info = tc[ex.gene_idx]
+        if ex.gene_idx not in y_by_gene:
+            y_by_gene[ex.gene_idx] = load_validation_gene(ex.gene_idx)[1]
+        y = y_by_gene[ex.gene_idx]
+        gene_len = y.shape[0]
 
-        # 1-based genomic midpoint of the gene, matching the seq->genomic
-        # mapping below (hg38_start/hg38_end are the gene's first/last base). Only
-        # used to centre the window, so a 1-base offset is immaterial here.
-        mid_genomic_1based = (gene_info["hg38_start"] + gene_info["hg38_end"]) // 2
-        start = max(0, mid_genomic_1based - interval_len // 2)
-        interval = genome.Interval(
-            chromosome=gene_info["chrom"], start=start, end=start + interval_len
+        assert harvest_radius >= (ex.donor - ex.acceptor) // 2, (
+            f"harvest_radius={harvest_radius} is under half the length of exon "
+            f"{ex.acceptor}-{ex.donor} in gene {ex.gene_idx}, so that exon's own "
+            f"sites would fall outside its harvest"
         )
+
+        interval = _exon_centered_interval(gene_info, ex, interval_len)
+        # off the chromosome start, so unplaceable
+        if interval.start < 0:
+            continue
 
         pred = predict_interval_with_retry(
             model,
@@ -153,21 +168,19 @@ def alphagenome_calibration_thresholds(
             t: find_strand_track(ss, t, gene_info["strand"]) for t in _CALIB_TRACK_TYPES
         }
 
-        # genomic 1-based position of each seq index, vectorised. The gene
-        # sequence spans exactly [hg38_start, hg38_end], so seq position 0 is the
-        # genomically-leftmost base on + strand and the rightmost on -.
+        # the midpoint the window was placed on, so these are the offsets the
+        # threshold gets applied at
         positions = np.arange(gene_len)
-        if gene_info["strand"] == "+":
-            genomic_1based = gene_info["hg38_start"] + positions
-        else:
-            genomic_1based = gene_info["hg38_end"] - positions
+        positions = positions[np.abs(positions - _exon_mid_seq(ex)) <= harvest_radius]
+
+        genomic_1based = _seq_pos_to_genomic_1based(gene_info, positions)
         idx = genomic_1based - 1 - track_start
         in_bounds = (idx >= 0) & (idx < W)
         idx_ib = idx[in_bounds]
+        seq_ib = positions[in_bounds]
         for t in _CALIB_TRACK_TYPES:
             values[t].append(ss.values[idx_ib, ti[t]])
-            # pylint: disable=unsubscriptable-object
-            truth[t].append((y[in_bounds, label_channel[t]] > 0.5).astype(np.float64))
+            truth[t].append((y[seq_ib, label_channel[t]] > 0.5).astype(np.float64))
 
     result = {}
     for t in _CALIB_TRACK_TYPES:
@@ -210,7 +223,7 @@ def alphagenome_calibration_accuracy_and_thresholds(
         ``SPLICE_SITE_USAGE`` is not supported.
     :param kwargs: forwarded verbatim to
         :func:`alphagenome_calibration_thresholds` (``interval_len``,
-        ``ontology_terms``, ``limit``, ``progress``).
+        ``harvest_radius``, ``ontology_terms``, ``limit``, ``progress``).
     :returns: ``(acc, thresholds)``, each an ``np.ndarray`` of shape ``(2,)`` in
         ``[acceptor, donor]`` order. ``acc`` is the per-channel recall at the
         chosen threshold; ``thresholds`` are in the raw ``output_type`` value
