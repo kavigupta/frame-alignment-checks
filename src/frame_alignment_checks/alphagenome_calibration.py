@@ -120,7 +120,9 @@ def alphagenome_calibration_thresholds(
     :param interval_len: AlphaGenome input window length (a supported size).
     :param harvest_radius: how far either side of the window centre to read
         positions from. Trades offset fidelity against sample size: smaller keeps
-        every readout near the centre, larger pools more sites per window.
+        every readout near the centre, larger pools more sites per window. Must be
+        at least half the longest exon (else that exon's own sites fall outside its
+        harvest) and at most ``interval_len // 2``; both are asserted.
     :param ontology_terms: ontology terms requested from the model.
     :param limit: if given, calibrate on only the first ``limit`` exons.
     :returns: dict with float ``"donor"``/``"acceptor"`` thresholds, base rates
@@ -130,6 +132,11 @@ def alphagenome_calibration_thresholds(
         "model was created without an explicit model_version; pass "
         "model_version=... to dna_client.create() so cached thresholds don't "
         "collide across folds"
+    )
+    # beyond the window half-width the harvest is silently clipped to the window
+    assert harvest_radius <= interval_len // 2, (
+        f"harvest_radius={harvest_radius} exceeds half of interval_len="
+        f"{interval_len}; positions past the window edge would be dropped"
     )
 
     tc = load_transcript_coords()
@@ -150,6 +157,12 @@ def alphagenome_calibration_thresholds(
             y_by_gene[ex.gene_idx] = load_validation_gene(ex.gene_idx)[1]
         y = y_by_gene[ex.gene_idx]
         gene_len = y.shape[0]
+
+        # otherwise the centred exon's own sites fall outside the harvest
+        assert harvest_radius >= (ex.donor - ex.acceptor) // 2, (
+            f"harvest_radius={harvest_radius} is under half the length of exon "
+            f"{ex.acceptor}-{ex.donor} in gene {ex.gene_idx}"
+        )
 
         interval = _exon_centered_interval(gene_info, ex, interval_len)
         # window off the chromosome start: unplaceable, skip (experiment fails on it).
