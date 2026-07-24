@@ -76,9 +76,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         ref = _ref_with_peaks([300])
         ref[700] = 0.4
         alt = np.roll(ref, -DEL_LEN)
-        n_total, _, _ = _frameshift_votes(
-            ref, alt, DEL_LEN, TRACK_START, DEL_END, ti=0
-        )
+        n_total, _, _ = _frameshift_votes(ref, alt, DEL_LEN, TRACK_START, DEL_END, ti=0)
         self.assertEqual(n_total, 1)
 
     def test_peak_destroyed_by_deletion_excluded(self):
@@ -86,9 +84,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         # the survival gate drops it -- the shift is not testable there.
         ref = _ref_with_peaks(PEAKS)
         alt = np.zeros(W)
-        n_total, _, _ = _frameshift_votes(
-            ref, alt, DEL_LEN, TRACK_START, DEL_END, ti=0
-        )
+        n_total, _, _ = _frameshift_votes(ref, alt, DEL_LEN, TRACK_START, DEL_END, ti=0)
         self.assertEqual(n_total, 0)
 
 
