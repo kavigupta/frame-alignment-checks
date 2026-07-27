@@ -1,6 +1,6 @@
 """
 Unit tests for the frameshift guard's peak voter,
-``fac.deletion.alphagenome_signal_checks._frameshift_votes``. Pure numpy -- no
+``fac.deletion.alphagenome_signal_checks.frameshift_votes``. Pure numpy -- no
 AlphaGenome and no network: the ref/alt track columns are built by hand.
 
 The guard exists to detect if AlphaGenome ever stops left-shifting deletion alt
@@ -15,7 +15,7 @@ import numpy as np
 
 from frame_alignment_checks.deletion.alphagenome_signal_checks import (
     FRAMESHIFT_PEAK_REL_FLOOR,
-    _frameshift_votes,
+    frameshift_votes,
 )
 
 W = 2000
@@ -39,7 +39,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         # == ref[i], so the shifted lookup is exact and no peak flips.
         ref = _ref_with_peaks(PEAKS)
         alt = np.roll(ref, -DEL_LEN)
-        n_total, n_fail, flipped = _frameshift_votes(
+        n_total, n_fail, flipped = frameshift_votes(
             ref, alt, DEL_LEN, track_start=TRACK_START, del_end_0based=DEL_END, ti=0
         )
         self.assertEqual(n_total, len(PEAKS))
@@ -51,7 +51,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         # exact, so every peak flips and the guard would fire.
         ref = _ref_with_peaks(PEAKS)
         alt = ref.copy()
-        n_total, n_fail, flipped = _frameshift_votes(
+        n_total, n_fail, flipped = frameshift_votes(
             ref, alt, DEL_LEN, track_start=TRACK_START, del_end_0based=DEL_END, ti=0
         )
         self.assertEqual(n_total, len(PEAKS))
@@ -64,7 +64,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         ref = _ref_with_peaks(PEAKS)
         alt = np.roll(ref, -DEL_LEN)
         del_end_past_all = TRACK_START + max(PEAKS) + 1
-        n_total, _, _ = _frameshift_votes(
+        n_total, _, _ = frameshift_votes(
             ref,
             alt,
             DEL_LEN,
@@ -81,7 +81,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         ref = _ref_with_peaks([300])
         ref[700] = 0.4
         alt = np.roll(ref, -DEL_LEN)
-        n_total, _, _ = _frameshift_votes(
+        n_total, _, _ = frameshift_votes(
             ref, alt, DEL_LEN, track_start=TRACK_START, del_end_0based=DEL_END, ti=0
         )
         self.assertEqual(n_total, 1)
@@ -91,7 +91,7 @@ class TestFrameshiftVotes(unittest.TestCase):
         # the survival gate drops it -- the shift is not testable there.
         ref = _ref_with_peaks(PEAKS)
         alt = np.zeros(W)
-        n_total, _, _ = _frameshift_votes(
+        n_total, _, _ = frameshift_votes(
             ref, alt, DEL_LEN, track_start=TRACK_START, del_end_0based=DEL_END, ti=0
         )
         self.assertEqual(n_total, 0)

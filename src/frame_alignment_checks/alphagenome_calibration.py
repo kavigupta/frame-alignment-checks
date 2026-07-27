@@ -38,7 +38,7 @@ _CACHE_DIR_CALIB = os.path.join(
 )
 
 
-def _seq_pos_to_genomic_1based(gene_info, pos):
+def seq_pos_to_genomic_1based(gene_info, pos):
     """Map seq coord ``pos`` (0-based, 5'->3') to 1-based hg38."""
     if gene_info["strand"] == "+":
         return gene_info["hg38_start"] + pos
@@ -50,11 +50,11 @@ def _exon_mid_seq(exon):
     return (exon.acceptor + exon.donor) // 2
 
 
-def _exon_centered_interval(gene_info, exon, interval_len):
+def exon_centered_interval(gene_info, exon, interval_len):
     """Length-``interval_len`` interval centred on ``exon``'s midpoint."""
     from alphagenome.data import genome
 
-    mid_0based = _seq_pos_to_genomic_1based(gene_info, _exon_mid_seq(exon)) - 1
+    mid_0based = seq_pos_to_genomic_1based(gene_info, _exon_mid_seq(exon)) - 1
     return genome.Interval(
         chromosome=gene_info["chrom"],
         start=mid_0based - interval_len // 2,
@@ -150,7 +150,7 @@ def alphagenome_calibration_thresholds(
             f"sites would fall outside its harvest"
         )
 
-        interval = _exon_centered_interval(gene_info, ex, interval_len)
+        interval = exon_centered_interval(gene_info, ex, interval_len)
         # off the chromosome start, so unplaceable
         if interval.start < 0:
             continue
@@ -173,7 +173,7 @@ def alphagenome_calibration_thresholds(
         positions = np.arange(gene_len)
         positions = positions[np.abs(positions - _exon_mid_seq(ex)) <= harvest_radius]
 
-        genomic_1based = _seq_pos_to_genomic_1based(gene_info, positions)
+        genomic_1based = seq_pos_to_genomic_1based(gene_info, positions)
         idx = genomic_1based - 1 - track_start
         in_bounds = (idx >= 0) & (idx < W)
         idx_ib = idx[in_bounds]

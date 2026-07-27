@@ -15,9 +15,9 @@ from permacache import permacache, stable_hash
 
 from ..alphagenome_api import find_strand_track, predict_variants_with_retry
 from ..alphagenome_calibration import (
-    _exon_centered_interval,
-    _seq_pos_to_genomic_1based,
     alphagenome_calibration_thresholds,
+    exon_centered_interval,
+    seq_pos_to_genomic_1based,
 )
 from ..coding_exon import CodingExon
 from ..load_data import (
@@ -26,8 +26,10 @@ from ..load_data import (
     load_validation_gene,
 )
 from .alphagenome_signal_checks import (
-    _assert_alt_tracks_left_shifted,
+    assert_alt_tracks_left_shifted,
     check_splice_site_signals,
+    raise_for_run_failures,
+    report_splice_site_disagreements,
 )
 from .delete import (
     DeletionAccuracyDeltaResult,
@@ -46,10 +48,6 @@ _SITE_TRACK_TYPES = ("donor", "acceptor", "donor", "acceptor")
 
 _COMP = {"A": "T", "C": "G", "G": "C", "T": "A"}
 _NTS = np.array(list("ACGT"))
-
-# max fraction of placeable exons that may disagree with the model's peak before
-# the run is failed as a systematic coordinate bug.
-MAX_SPLICE_SITE_FAILURE_RATE = 0.05
 
 # Package-local cache dirs (shipped via package_data) so results travel with the
 # install. `_refalt` versions the cache: deltas_for_exon now stores ref/alt, not a
@@ -160,8 +158,8 @@ def run_alphagenome_deletion_experiment(
             )
             ss_disagreements.append((i, ex.gene_idx, descs))
 
-    ss_rate, ss_fatal = _report_splice_site_disagreements(ss_disagreements, n_placeable)
-    _raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal)
+    ss_rate, ss_fatal = report_splice_site_disagreements(ss_disagreements, n_placeable)
+    raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal)
 
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
@@ -267,10 +265,7 @@ def deltas_for_exon(
     def seq_slice_to_ref_bases(start, end):
         return _seq_slice_to_ref_bases(gene_info, seq_idx, start, end)
 
-    def seq_pos_to_genomic_1based(pos):
-        return _seq_pos_to_genomic_1based(gene_info, pos)
-
-    interval = _exon_centered_interval(gene_info, exon, interval_len)
+    interval = exon_centered_interval(gene_info, exon, interval_len)
     _assert_interval_on_chromosome(interval, exon, gene_info, interval_len)
 
     variants = []
@@ -279,7 +274,9 @@ def deltas_for_exon(
     ):
         ref_bases = seq_slice_to_ref_bases(seq_start, seq_end)
         # leftmost genomic coordinate of the half-open deleted span [start, end)
-        pos = seq_pos_to_genomic_1based(seq_start if strand == "+" else seq_end - 1)
+        pos = seq_pos_to_genomic_1based(
+            gene_info, seq_start if strand == "+" else seq_end - 1
+        )
         variants.append(
             genome.Variant(
                 chromosome=gene_info["chrom"],
@@ -309,7 +306,7 @@ def deltas_for_exon(
         exon.donor,
         exon.next_acceptor,
     ]
-    site_genomic = [seq_pos_to_genomic_1based(p) for p in site_seq_positions]
+    site_genomic = [seq_pos_to_genomic_1based(gene_info, p) for p in site_seq_positions]
 
     # reported, not fatal: keep the deltas; the run-level rate bar decides.
     splice_site_failures = check_splice_site_signals(
@@ -318,7 +315,7 @@ def deltas_for_exon(
         site_track_idx,
     )
 
-    _assert_alt_tracks_left_shifted(
+    assert_alt_tracks_left_shifted(
         variant_outputs,
         variants,
         output_type,
@@ -401,56 +398,3 @@ def _assert_ref_alt_tracks_aligned(ref_ss, alt_ss):
     """Both readouts are indexed by the same local position, so they must agree."""
     assert alt_ss.values.shape == ref_ss.values.shape
     assert alt_ss.interval.start == ref_ss.interval.start
-
-
-# --- run-level checks ---
-
-
-def _report_splice_site_disagreements(ss_disagreements, n_placeable):
-    """
-    Print the consolidated disagreement listing and decide whether the rate is
-    high enough to look like a systematic coordinate bug rather than noise.
-    Returns ``(rate, fatal)``.
-    """
-    rate = len(ss_disagreements) / max(n_placeable, 1)
-    fatal = bool(ss_disagreements) and rate >= MAX_SPLICE_SITE_FAILURE_RATE
-    if ss_disagreements:
-        verdict = (
-            "EXCEEDED, failing run" if fatal else "within bar, kept (deltas retained)"
-        )
-        # consolidated list (inline prints get buried in the progress bar).
-        listing = "\n".join(
-            f"  exon {i} (gene_idx={gene_idx}): {descs}"
-            for i, gene_idx, descs in ss_disagreements
-        )
-        print(
-            f"  splice-site sanity: {len(ss_disagreements)}/{n_placeable} placeable "
-            f"exon(s) disagreed (rate {rate:.3%}, bar "
-            f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}) -- {verdict}:\n{listing}"
-        )
-    return rate, fatal
-
-
-def _raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal):
-    """Raise every per-exon failure together, chained to the first one."""
-    if not (failures or ss_fatal):
-        return
-    parts = [
-        f"  exon {i} (gene_idx={gene_idx}): {type(e).__name__}: {e}"
-        for i, gene_idx, e in failures
-    ]
-    if ss_fatal:
-        parts += [
-            f"  exon {i} (gene_idx={gene_idx}): splice-site disagreement: {descs}"
-            for i, gene_idx, descs in ss_disagreements
-        ]
-    reason = f"{len(failures)} hard failure(s)" + (
-        f" and splice-site disagreement rate {ss_rate:.3%} >= "
-        f"{MAX_SPLICE_SITE_FAILURE_RATE:.1%}"
-        if ss_fatal
-        else ""
-    )
-    cause = failures[0][2] if failures else None
-    raise RuntimeError(
-        f"AlphaGenome deletion experiment failed ({reason}):\n" + "\n".join(parts)
-    ) from cause
