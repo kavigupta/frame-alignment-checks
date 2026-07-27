@@ -1,6 +1,6 @@
 """
 Unit tests for the frameshift guard's peak voter,
-``fac.deletion.alphagenome_deletion._frameshift_votes``. Pure numpy -- no
+``fac.deletion.alphagenome_signal_checks._frameshift_votes``. Pure numpy -- no
 AlphaGenome and no network: the ref/alt track columns are built by hand.
 
 The guard exists to detect if AlphaGenome ever stops left-shifting deletion alt
@@ -13,7 +13,7 @@ import unittest
 
 import numpy as np
 
-from frame_alignment_checks.deletion.alphagenome_deletion import (
+from frame_alignment_checks.deletion.alphagenome_signal_checks import (
     FRAMESHIFT_PEAK_REL_FLOOR,
     _frameshift_votes,
 )
