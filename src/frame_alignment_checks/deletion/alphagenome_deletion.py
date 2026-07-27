@@ -101,6 +101,9 @@ def run_alphagenome_deletion_experiment(
     tc = load_transcript_coords()
     # per-site thresholds donor/acceptor/donor/acceptor (via _SITE_TRACK_TYPES).
     thr_vec = None
+    assert (
+        binary_metric or thresholds is None
+    ), "thresholds are only used by the binary metric; got binary_metric=False"
     if binary_metric:
         if thresholds is None:
             thresholds = alphagenome_calibration_thresholds(
