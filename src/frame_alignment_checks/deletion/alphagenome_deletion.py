@@ -83,6 +83,11 @@ def run_alphagenome_deletion_experiment(
     ``binary_metric=False`` reports continuous ``alt - ref``. ``thresholds``
     overrides the calibration (computed once when None).
 
+    Caveat: the calibration only harvests within ``harvest_radius`` of the exon
+    midpoint, and P5'SS/N3'SS can sit further out than that (~12% of sites do),
+    so those two columns are thresholded outside the offsets they were
+    calibrated at. The exon's own 3'SS/5'SS always fall inside the radius.
+
     ``output_type`` must be ``SPLICE_SITES``: the readout and the calibration
     both index a donor/acceptor-typed track, which ``SPLICE_SITE_USAGE`` (tracks
     per assay) does not have.
@@ -262,6 +267,9 @@ def deltas_for_exon(
     _assert_deletion_fits_exon(
         exon, distance_out=distance_out, delete_up_to=delete_up_to
     )
+    _assert_deletion_clears_sites(
+        exon, distance_out=distance_out, delete_up_to=delete_up_to
+    )
     strand = gene_info["strand"]
 
     def seq_slice_to_ref_bases(start, end):
@@ -387,6 +395,24 @@ def _assert_deletion_fits_exon(exon, *, distance_out, delete_up_to):
         f"This deletion experiment (distance_out={distance_out}, "
         f"delete_up_to={delete_up_to}) is too large for the exon {exon}"
     )
+
+
+def _assert_deletion_clears_sites(exon, *, distance_out, delete_up_to):
+    """
+    No deletion may span an annotated site: the readout would index the alt track
+    at a position the deletion removed. ``perform_deletion``'s "should not delete
+    a boundary" assert, which this path does not go through. The exon-width check
+    above only clears 3'SS/5'SS, so this is really about the flanking sites.
+    """
+    for start, end in deletion_ranges_for_exon(
+        exon, distance_out=distance_out, delete_up_to=delete_up_to
+    ):
+        spanned = [i for i in exon.all_locations if start <= i < end]
+        assert not spanned, (
+            f"deletion [{start}, {end}) spans splice site(s) {spanned} of exon "
+            f"{exon}; the flanking intron is shorter than distance_out="
+            f"{distance_out}"
+        )
 
 
 def _assert_interval_on_chromosome(interval, exon, gene_info, interval_len):
