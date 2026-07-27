@@ -148,6 +148,7 @@ def run_alphagenome_deletion_experiment(
         except Exception as e:  # pylint: disable=broad-except
             print(f"  exon {i} (gene_idx={ex.gene_idx}): FAILED - {e}")
             failures.append((i, ex.gene_idx, e))
+            per_exon.append(nan_block)
             continue
         # keep deltas regardless of disagreement; just record it below.
         per_exon.append(metric(res))
@@ -161,6 +162,7 @@ def run_alphagenome_deletion_experiment(
     ss_rate, ss_fatal = report_splice_site_disagreements(ss_disagreements, n_placeable)
     raise_for_run_failures(failures, ss_disagreements, ss_rate, ss_fatal)
 
+    assert per_exon, "no exons to run"
     raw_data = np.stack(per_exon)[None]  # (1, num_exons, delete_up_to, 4, 4)
     return DeletionAccuracyDeltaResult(raw_data=raw_data)
 
@@ -181,7 +183,7 @@ def alphagenome_deletion_experiment(
     """
     Full experiment: load all canonical internal coding exons and run every
     ``1..delete_up_to`` nt deletion through the model (the analogue of
-    ``fac.deletion.experiment``). ``exp1`` is a capped smoke-test driver.
+    ``fac.deletion.experiment``).
 
     :param model: AlphaGenome client (needs an explicit ``model_version``).
     :param output_type: ``SPLICE_SITES``; see
