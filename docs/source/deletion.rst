@@ -11,6 +11,16 @@ Deletion Experiments
 .. autofunction:: fac.deletion.plot_exon_effects_by_orf
 .. autofunction:: fac.deletion.plot_matrix_at_site
 
+AlphaGenome Deletion Experiment
+------------------------------------------
+
+The AlphaGenome analogue of ``fac.deletion.experiment``, returning the same
+``DeletionAccuracyDeltaResult``. Requires the ``alphagenome`` extra
+(``pip install frame-alignment-checks[alphagenome]``) and an API key.
+
+.. autofunction:: fac.deletion.alphagenome_deletion_experiment
+.. autofunction:: fac.deletion.run_alphagenome_deletion_experiment
+
 Adjacent Deletions Experiment
 ------------------------------------------
 
