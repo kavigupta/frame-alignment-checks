@@ -59,6 +59,14 @@ _CACHE_DIR_REFALT = os.path.join(
 )
 
 
+@permacache(
+    "frame_alignment_checks/deletion/alphagenome_deletion/run_alphagenome_deletion_experiment",
+    key_function=dict(
+        exons=stable_hash,
+        model=lambda m: m._model_version,  # pylint: disable=protected-access
+        output_type=str,
+    ),
+)
 def run_alphagenome_deletion_experiment(
     exons: List[CodingExon],
     model: dna_client.DnaClient,
